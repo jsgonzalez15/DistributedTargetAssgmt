@@ -9,3 +9,10 @@ Temas:
 
 @author: Juan Sebastián González Rojas 201612109
 """
+import TesisPythonTry.functionsGRIDassgmt as myFcns
+
+######################################################################################################
+##                          Simulacion Metodos Distribuidos: GRID Assignment
+######################################################################################################
+
+radOper=myFcns.CalcularParametrosEnergeticos() #calculo de radio de Operaciones
