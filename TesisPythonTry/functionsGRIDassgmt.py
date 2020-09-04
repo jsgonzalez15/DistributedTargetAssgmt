@@ -4,7 +4,7 @@ Métodos para réplica de GRID Target Assgmt.
 Funciones:
 * InitialPlot gráfica inicial, organización de información y relacion visual de información.
 * CurrentCell funcion para obtener id de celda actual.
-* CalcularParametrosEnergeticos calcula el radio de operación de despliegue según parámetros del UAV.
+* CalcularParametrosEnergeticos calcula el radio de operación de despliegue, el consumo y la velocidad optimos según parámetros del UAV.
 * UAVandTargetInCell funcion que retorna UAVs y targets en la celda actual.
 * MoveUAVtoTarget funcion que mueve UAVs segun tipo de UAV y asignación.
 
@@ -22,7 +22,26 @@ def CurrentCell(p:list,C:list,radOper:int,div:int)->int:
     yourCell=C[currentLine][currentColumn] #celda actual
     return yourCell
 
-def CalcularParametrosEnergeticos()->int:
+def uavAndTargetInCell(cellOfIter,initialUAVs,places,C,radOper,div)->list:
+    #Retorna posiciones de UAVs y Objetivos dentro de la celda especificada
+    #Retorna la cantidad de UAVs dentro de la celda
+    #Retorna los indices en initialUAVs para posterior actualizacion
+    
+    CurrentCellInfo=[] #Matriz con ubicaciones (UAVs primero Targets despues)
+    indicesUAVinCell=[] #Vector con indices de UAVs encontrados en initialUAVs
+    indicesTargetInCell=[] #Vector con indices de Targets encontrados en places
+    for j in range(initialUAVs.shape[0]): #filas equivalentes a # de UAVs
+        if CurrentCell(initialUAVs[j,:],C,radOper,div)==cellOfIter:
+            CurrentCellInfo=CurrentCellInfo.append(initialUAVs[j,:])
+            indicesUAVinCell=indicesUAVinCell.append(j)
+    nUAVsInCell=(np.array(CurrentCellInfo)).shape[0]
+    for k in range(places.shape[0]):
+        if CurrentCell(places[k,:],C,radOper,div)==cellOfIter:
+            CurrentCellInfo=CurrentCellInfo.append(places[k,:])
+            indicesTargetInCell=indicesTargetInCell.append(k)
+    return [CurrentCellInfo,nUAVsInCell,indicesUAVinCell,indicesTargetInCell]
+
+def CalcularParametrosEnergeticos()->list:
     w=21 #Peso [kg] 
     b=0.860 #Ancho frontal [m]
     A=0.530*0.480 #Area frontal [m^2]#
@@ -67,4 +86,4 @@ def CalcularParametrosEnergeticos()->int:
     # Radio de operaciones en m para densidades
     radOper=maxDistanceOpt*0.95/2
     radOper2=maxDistanceOpt2*0.95/2#
-    return radOper
+    return [radOper,PtOptimum,vOptimum]
