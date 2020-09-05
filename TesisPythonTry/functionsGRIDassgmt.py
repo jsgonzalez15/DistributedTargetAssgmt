@@ -10,7 +10,7 @@ Funciones:
 
 @author: Juan Sebastián González Rojas 201612109
 """
-from matplotlib import pyplot
+from matplotlib import pyplot as plt
 import numpy as np
 import math
 from scipy import constants
@@ -41,13 +41,32 @@ def uavAndTargetInCell(cellOfIter,initialUAVs,places,C,radOper,div)->list:
             indicesTargetInCell=indicesTargetInCell.append(k)
     return [CurrentCellInfo,nUAVsInCell,indicesUAVinCell,indicesTargetInCell]
 
+def initialScatter (places,initialUAVs,div,radOper,C,autom,F,video)->list:
+    colors=[0,0,0]
+    # Generacion visual de GRID utilizando meshgrid
+    print(int(round(radOper/1000)))
+    gridNodes=np.array(range(0,int(round(radOper/1000))+1,int(round(radOper/(1000*div)))))
+    
+    [Xb,Yb]=np.meshgrid(gridNodes,gridNodes) 
+
+    plt.scatter(places[:,0],places[:,1],marker='o',c='None', edgecolor='red',lineWidth=0.7,label='Objetivos')
+    plt.scatter(initialUAVs[:,0],initialUAVs[:,1], marker='x',color='b',lineWidth=0.7,label='UAVs')
+    plt.plot(Xb,Yb,'k--',lineWidth=1)
+    plt.plot(Yb,Xb,'k--',lineWidth=1)
+    plt.xlabel('x (km)')
+    plt.ylabel('y (km)')
+    plt.title('Evolución de envios distribuidos')
+    plt.legend(frameon=False,bbox_to_anchor=(1.001, 1), loc='upper left')
+    plt.show()
+    return [colors,False]
+
 def CalcularParametrosEnergeticos()->list:
     w=21 #Peso [kg] 
     b=0.860 #Ancho frontal [m]
-    A=0.530*0.480 #Area frontal [m^2]#
-    varSigma=0.430*0.480 #Area superior [m^2]
+    A=0.530*0.480 #Area frontal [m**2]#
+    varSigma=0.430*0.480 #Area superior [m**2]
 
-    g=constants.value('standard acceleration of gravity')#[m/(s^2)]
+    g=constants.value('standard acceleration of gravity')#[m/(s**2)]
     T=w*g #Empuje (Peso) [N]
     v=18 #Velocidad (UAV-aire) [m/s]
     Cd=0.45 # Coeficiente aerodinamico de arrastre
@@ -56,24 +75,20 @@ def CalcularParametrosEnergeticos()->list:
     Humidity=[0.65,0.95] #Densidad de H2O
     Pressure=[600,1200] #Presion [hPa] (Valores esperados)
     
-    #Densidad del aire minima y maxima esperada en kg/m^3
-    Dmin=(0.34848*Pressure[1]-0.009*Humidity[2]*np.exp(0.061*Temperature[2]))/(273.15+Temperature[2])
-    Dmax=(0.34848*Pressure[2]-0.009*Humidity[1]*np.exp(0.061*Temperature[1]))/(273.15+Temperature[1])
+    #Densidad del aire minima y maxima esperada en kg/m**3
+    Dmin=(0.34848*Pressure[0]-0.009*Humidity[1]*np.exp(0.061*Temperature[1]))/(273.15+Temperature[1])
+    Dmax=(0.34848*Pressure[1]-0.009*Humidity[0]*np.exp(0.061*Temperature[0]))/(273.15+Temperature[0])
     
     #Consumo estatico min y max
-    pmin=(T^1.5)/((2*Dmax*varSigma)^0.5)
-    pmax=(T^1.5)/((2*Dmin*varSigma)^0.5)
+    [pmin,pmax]=[(T**1.5)/((2*Dmax*varSigma)**0.5),(T**1.5)/((2*Dmin*varSigma)**0.5)]
     p=pmax
     #Consumo velocidad maxima min y max
-    Ptmin=0.5*Cd*A*Dmin*(v^3)+(w^2)/(Dmin*v*b^2)
-    Ptmax=0.5*Cd*A*Dmax*(v^3)+(w^2)/(Dmax*v*b^2)
+    [Ptmin,Ptmax]=[0.5*Cd*A*Dmin*(v**3)+(w**2)/(Dmin*v*b**2),0.5*Cd*A*Dmax*(v**3)+(w**2)/(Dmax*v*b**2)]
     Pt=Ptmax #consumo velocidad maxima
     #Velocidad con menor consumo min y max
-    vOptimum=((2*w^2)/(Cd*A*(b*Dmax)^2))^0.25
-    vOptimum2=((2*w^2)/(Cd*A*(b*Dmin)^2))^0.25
+    [vOptimum,vOptimum2]=[((2*w**2)/(Cd*A*(b*Dmax)**2))**0.25,((2*w**2)/(Cd*A*(b*Dmin)**2))**0.25]
     #Consumo optimo
-    PtOptimum=0.5*Cd*A*Dmax*(vOptimum^3)+(w^2)/(Dmax*vOptimum*b^2)#
-    PtOptimum2=0.5*Cd*A*Dmin*(vOptimum2^3)+(w^2)/(Dmin*vOptimum2*b^2)#
+    [PtOptimum,PtOptimum2]=[0.5*Cd*A*Dmax*(vOptimum**3)+(w**2)/(Dmax*vOptimum*b**2),0.5*Cd*A*Dmin*(vOptimum2**3)+(w**2)/(Dmin*vOptimum2*b**2)]
     
     capBattery=266 #Cap. bateria [Wh]
     timeHovering=11*60 #duracion vuelo estatico (21kg)
