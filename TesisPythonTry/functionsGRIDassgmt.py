@@ -56,6 +56,7 @@ def initialScatter (places,initialUAVs,div,radOper,C,autom,F,video)->list:
     plt.xlabel('x (km)')
     plt.ylabel('y (km)')
     plt.title('Evolución de envios distribuidos')
+    #corregir esto
     plt.legend(frameon=False,bbox_to_anchor=(1.001, 1), loc='upper left')
     plt.show()
     return [colors,False]
