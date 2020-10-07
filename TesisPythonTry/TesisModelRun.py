@@ -26,12 +26,12 @@ import numpy as np
 ''' Parámetros generales de simulación'''
 [densidadMin,densidadMax]=[6,6] #Rango de densidades a simular
 placesPerUAV=6 #Proporción de objetivos por UAV
-dt=0.3
 consumoDensidad=[] #valores medios y desviación estándar por densidad
 consumoIteracion=[] #valores medios y desviación estándar en consumo por iteración
 desviacionConsumoUAVs=0 #max desv de consumo entre UAVs (ideal 0)
 divIniciales=3 #divisiones iniciales
 simulacionesPorDensidad=100 #n sim por densidad
+dt=0.3
 
 video=0 #obtener un video de simulación (1) ejecutar sin video (0)
 autom=1 #autom sim(1)/ver todo(0)

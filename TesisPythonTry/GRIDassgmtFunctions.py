@@ -2,11 +2,10 @@
 Métodos para réplica de GRID Target Assgmt.
 
 Funciones:
-* InitialPlot gráfica inicial, organización de información y relacion visual de información.
 * CurrentCell funcion para obtener id de celda actual.
-* CalcularParametrosEnergeticos calcula el radio de operación de despliegue, el consumo y la velocidad optimos según parámetros del UAV.
 * UAVandTargetInCell funcion que retorna UAVs y targets en la celda actual.
-* MoveUAVtoTarget funcion que mueve UAVs segun tipo de UAV y asignación.
+* initialScatter gráfica inicial, organización de información y relacion visual de información.
+* CalcularParametrosEnergeticos calcula el radio de operación de despliegue, el consumo y la velocidad optimos según parámetros del UAV.
 
 @author: Juan Sebastián González Rojas 201612109
 @email: js.gonzalez15@uniandes.edu.co
@@ -42,8 +41,7 @@ def uavAndTargetInCell(cellOfIter,initialUAVs,places,C,radOper,div)->list:
             indicesTargetInCell=indicesTargetInCell.append(k)
     return [CurrentCellInfo,nUAVsInCell,indicesUAVinCell,indicesTargetInCell]
 
-def initialScatter (places,initialUAVs,div,radOper,C,autom,F,video)->list:
-    colors=[0,0,0]
+def initialScatter (places,initialUAVs,div,radOper,C,autom,video):
     # Generacion visual de GRID utilizando meshgrid
     print(int(round(radOper/1000)))
     gridNodes=np.array(range(0,int(round(radOper/1000))+1,int(round(radOper/(1000*div)))))
@@ -59,7 +57,6 @@ def initialScatter (places,initialUAVs,div,radOper,C,autom,F,video)->list:
     plt.title('Evolución de envios distribuidos')
     plt.legend(frameon=False,bbox_to_anchor=(1.001, 1), loc='upper left')
     plt.show()
-    return [colors,False]
 
 def CalcularParametrosEnergeticos()->list:
     w=21 #Peso [kg] 
