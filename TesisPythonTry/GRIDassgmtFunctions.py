@@ -5,20 +5,23 @@ Funciones:
 * CurrentCell funcion para obtener id de celda actual.
 * UAVandTargetInCell funcion que retorna UAVs y targets en la celda actual.
 * initialScatter gráfica inicial, organización de información y relacion visual de información.
+* anima función para animar escenario y movimiento de UAVs.
 * CalcularParametrosEnergeticos calcula el radio de operación de despliegue, el consumo y la velocidad optimos según parámetros del UAV.
 
 @author: Juan Sebastián González Rojas 201612109
 @email: js.gonzalez15@uniandes.edu.co
 """
 from matplotlib import pyplot as plt
+from matplotlib import animation
 import numpy as np
 import math
 from scipy import constants
 
 def CurrentCell(p:list,C:list,radOper:int,div:int)->int:
     #Retorna la celda actual del UAV
-    currentColumn=math.ceil((p[1]/(radOper/1000))*div) #columna actual
-    currentLine=math.ceil((p[2]/(radOper/1000))*div) #fila actual
+    currentColumn=math.ceil((p[0]/(radOper/1000))*div) #columna actual
+    currentLine=div-math.ceil((p[1]/(radOper/1000))*div) #fila actual
+    print("CurrentCell says:" +str(currentLine)+str(currentColumn))
     yourCell=C[currentLine][currentColumn] #celda actual
     return yourCell
 
@@ -30,15 +33,15 @@ def uavAndTargetInCell(cellOfIter,initialUAVs,places,C,radOper,div)->list:
     CurrentCellInfo=[] #Matriz con ubicaciones (UAVs primero Targets despues)
     indicesUAVinCell=[] #Vector con indices de UAVs encontrados en initialUAVs
     indicesTargetInCell=[] #Vector con indices de Targets encontrados en places
-    for j in range(initialUAVs.shape[0]): #filas equivalentes a # de UAVs
+    for j in range(len(initialUAVs)): #filas equivalentes a # de UAVs
         if CurrentCell(initialUAVs[j,:],C,radOper,div)==cellOfIter:
-            CurrentCellInfo=CurrentCellInfo.append(initialUAVs[j,:])
-            indicesUAVinCell=indicesUAVinCell.append(j)
+            CurrentCellInfo.append(initialUAVs[j,:])
+            indicesUAVinCell.append(j)
     nUAVsInCell=(np.array(CurrentCellInfo)).shape[0]
-    for k in range(places.shape[0]):
+    for k in range(len(places)):
         if CurrentCell(places[k,:],C,radOper,div)==cellOfIter:
-            CurrentCellInfo=CurrentCellInfo.append(places[k,:])
-            indicesTargetInCell=indicesTargetInCell.append(k)
+            CurrentCellInfo.append(places[k,:])
+            indicesTargetInCell.append(k)
     return [CurrentCellInfo,nUAVsInCell,indicesUAVinCell,indicesTargetInCell]
 
 def initialScatter (places,initialUAVs,div,radOper,C,autom,video):
@@ -47,7 +50,7 @@ def initialScatter (places,initialUAVs,div,radOper,C,autom,video):
     gridNodes=np.array(range(0,int(round(radOper/1000))+1,int(round(radOper/(1000*div)))))
     
     [Xb,Yb]=np.meshgrid(gridNodes,gridNodes) 
-
+    plt.cla() #Se borra información anterior al ploteo actual
     plt.scatter(places[:,0],places[:,1],marker='o',c='None', edgecolor='red',lineWidth=0.7,label='Objetivos')
     plt.scatter(initialUAVs[:,0],initialUAVs[:,1], marker='x',color='b',lineWidth=0.7,label='UAVs')
     plt.plot(Xb,Yb,'k--',lineWidth=1)
@@ -57,6 +60,10 @@ def initialScatter (places,initialUAVs,div,radOper,C,autom,video):
     plt.title('Evolución de envios distribuidos')
     plt.legend(frameon=False,bbox_to_anchor=(1.001, 1), loc='upper left')
     plt.show()
+
+def anima():
+	objeto=animation.FuncAnimation(plt.figure(1),initialScatter,10000) #plt.gcf get currently figure Animar las figuras por parámetro de manera iterativa
+	plt.show()
 
 def CalcularParametrosEnergeticos()->list:
     w=21 #Peso [kg] 
