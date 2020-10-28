@@ -19,13 +19,12 @@ from scipy import constants
 
 def CurrentCell(p:list,C:list,radOper:int,div:int)->int:
     #Retorna la celda actual del UAV
-    currentColumn=math.ceil((p[0]/(radOper/1000))*div) #columna actual
+    currentColumn=math.ceil((p[0]/(radOper/1000))*div)-1 #columna actual
     currentLine=div-math.ceil((p[1]/(radOper/1000))*div) #fila actual
-    print("CurrentCell says:" +str(currentLine)+str(currentColumn))
     yourCell=C[currentLine][currentColumn] #celda actual
     return yourCell
 
-def uavAndTargetInCell(cellOfIter,initialUAVs,places,C,radOper,div)->list:
+def uavAndTargetInCell(cellOfIter:int,initialUAVs:list,places:list,C:list,radOper:int,div:int)->list:
     #Retorna posiciones de UAVs y Objetivos dentro de la celda especificada
     #Retorna la cantidad de UAVs dentro de la celda
     #Retorna los indices en initialUAVs para posterior actualizacion
@@ -46,7 +45,6 @@ def uavAndTargetInCell(cellOfIter,initialUAVs,places,C,radOper,div)->list:
 
 def initialScatter (places,initialUAVs,div,radOper,C,autom,video):
     # Generacion visual de GRID utilizando meshgrid
-    print(int(round(radOper/1000)))
     gridNodes=np.array(range(0,int(round(radOper/1000))+1,int(round(radOper/(1000*div)))))
     
     [Xb,Yb]=np.meshgrid(gridNodes,gridNodes) 
@@ -58,8 +56,10 @@ def initialScatter (places,initialUAVs,div,radOper,C,autom,video):
     plt.xlabel('x (km)')
     plt.ylabel('y (km)')
     plt.title('Evolución de envios distribuidos')
-    plt.legend(frameon=False,bbox_to_anchor=(1.001, 1), loc='upper left')
-    plt.show()
+    plt.legend()
+    plt.gcf().canvas.draw()
+    if not video:
+        plt.show()
 
 def anima():
 	objeto=animation.FuncAnimation(plt.figure(1),initialScatter,10000) #plt.gcf get currently figure Animar las figuras por parámetro de manera iterativa
