@@ -54,6 +54,5 @@ img = cv2.cvtColor(img,cv2.COLOR_RGB2BGR)
 # display image with opencv or any operation you like
 cv2.imshow("plot",img)
 cv2.waitKey()'''
-
-a=[1,2,3,4]
-print(a[0:3])
+a=np.array([True, True])
+print(a.all()==True)

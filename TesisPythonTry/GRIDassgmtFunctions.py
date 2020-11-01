@@ -43,7 +43,7 @@ def uavAndTargetInCell(cellOfIter:int,initialUAVs:list,places:list,C:list,radOpe
             indicesTargetInCell.append(k)
     return [CurrentCellInfo,nUAVsInCell,indicesUAVinCell,indicesTargetInCell]
 
-def initialScatter (places,initialUAVs,div,radOper,C,autom,video):
+def initialScatter (places,initialUAVs,initialUAVsZero,div,radOper,C,autom,video):
     # Generacion visual de GRID utilizando meshgrid
     gridNodes=np.array(range(0,int(round(radOper/1000))+1,int(round(radOper/(1000*div)))))
     
@@ -51,6 +51,10 @@ def initialScatter (places,initialUAVs,div,radOper,C,autom,video):
     plt.cla() #Se borra información anterior al ploteo actual
     plt.scatter(places[:,0],places[:,1],marker='o',c='None', edgecolor='red',lineWidth=0.7,label='Objetivos')
     plt.scatter(initialUAVs[:,0],initialUAVs[:,1], marker='x',color='b',lineWidth=0.7,label='UAVs')
+    for j in range(initialUAVs.shape[0]):
+        plt.plot([initialUAVsZero[0,0],initialUAVs[0,0]],[initialUAVsZero[0,1],initialUAVs[0,1]],'b--',lineWidth=0.5)
+    
+    plt.plot([initialUAVsZero[0,0],initialUAVs[0,0]],[initialUAVsZero[0,1],initialUAVs[0,1]],'b--',lineWidth=0.5)
     plt.plot(Xb,Yb,'k--',lineWidth=1)
     plt.plot(Yb,Xb,'k--',lineWidth=1)
     plt.xlabel('x (km)')
@@ -58,8 +62,9 @@ def initialScatter (places,initialUAVs,div,radOper,C,autom,video):
     plt.title('Evolución de envios distribuidos')
     plt.legend()
     plt.gcf().canvas.draw()
-    if not video:
-        plt.show()
+    #if not video:
+        #print("InitialScatter says: not Showing for now")
+        #plt.show()
 
 def anima():
 	objeto=animation.FuncAnimation(plt.figure(1),initialScatter,10000) #plt.gcf get currently figure Animar las figuras por parámetro de manera iterativa

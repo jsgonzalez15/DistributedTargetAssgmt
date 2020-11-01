@@ -35,6 +35,7 @@ autom=1 #autom sim(1)/ver todo(0)
 changeDiv=1 #cambiar div durante sim(1)/ mantener div(0)
 simulacionesPorDensidad=100 #n sim por densidad
 video=True #guardar video de la simulación
+firstAsign=True
 
 ######################################################################################################
 ##                          Simulacion para diferentes densidades por celda
@@ -57,11 +58,16 @@ for densidadActualSim in range(densidadMin,densidadMax+1,2): #Densidad (#targets
 
     #(x,y,asign) posiciones [km] y asignaciones (+1) Lider (-1) No Asignado
     initialUAVs= np.concatenate(((np.random.rand(nUAVs,2)*radOper/1000),np.zeros((nUAVs,1))),axis=1)
+    if firstAsign:
+        initialUAVsZero=initialUAVs #ubicaciones iniciales para ploteo de trayectorias
+        firstAsign=False
+
+    initialUAVsZero=initialUAVs #ubicaciones iniciales para ploteo de trayectorias
     C=np.array([range((div-1)*div+1,div*div+1)]) # Matriz de indices para identificar celdas
     for i in range(div-1,0,-1):
         C=np.append(C,[range((i-1)*div+1,div*i+1)],axis=0)
     
-    GRIDFcns.initialScatter(places,initialUAVs,div,radOper,C,autom,video) #Estado inicial de algoritmo
+    GRIDFcns.initialScatter(places,initialUAVs,initialUAVsZero,div,radOper,C,autom,video) #Estado inicial de algoritmo
     deltaMatrix=np.zeros([div*2,div])
     deltaRight=np.zeros(div) #Matriz de deltas a actualizar por lideres en celdas
     
@@ -76,6 +82,7 @@ for densidadActualSim in range(densidadMin,densidadMax+1,2): #Densidad (#targets
     #while (len(targetsMet)<len(initialUAVs)) and (len(targetsMet)<len(places)): #Sim hasta:(a) todos los UAV llegaron, o, (b) targets agotados
     for i in range(50):
         print(str(i)+" actualizaciones en iteracion actual")
+        cellsMet=True #booleano que indica si los objetivos fueron alcanzados en todas las celdas
         for celdaActual in range(1,div**2+1): #recorrido sobre todas las celdas
             asignados=0 #cantidad de UAVs asignados en celda de iteracion actual
             distancias=[] #vector de distancias actuales entre asignados y objetivos
@@ -88,12 +95,7 @@ for densidadActualSim in range(densidadMin,densidadMax+1,2): #Densidad (#targets
                deltaMatrix[currentRow*2,currentColumn]=deltaMatrix[(currentRow-1)*2,currentColumn]+deltaMatrix[(currentRow-1)*2+1,currentColumn]
             
             if aNumber!=0: #Revision de la celda cuando hay UAVs presentes
-                GRIDFcns.initialScatter(places,initialUAVs,div,radOper,C,autom,video)
-
-                # display image with opencv or any operation you like
-                #cv2.imshow("plot",img)
-                #cv2.waitKey()
-                
+                GRIDFcns.initialScatter(places,initialUAVs,initialUAVsZero,div,radOper,C,autom,video)                
                 if len(CurrentCellInfo)-aNumber<aNumber:
                     asignados=len(CurrentCellInfo)-aNumber
                 else:
@@ -113,6 +115,13 @@ for densidadActualSim in range(densidadMin,densidadMax+1,2): #Densidad (#targets
                 moveDistancias= np.c_[dx*(arrivingBoolMatrix-1)*(-1),np.zeros((distancias.shape[0],1))] #vector de movimiento
                 CurrentCellInfo[0:aNumber]=CurrentCellInfo[0:aNumber]+ moveLlegadas #llegada
                 CurrentCellInfo[0:aNumber]=CurrentCellInfo[0:aNumber]+ moveDistancias #movimiento
+                if arrivingBool.all()==True:
+                    cellsMet=cellsMet and True #celda actual satisface asignacion
+                else:
+                    cellsMet=cellsMet and False#celda actual no ha asignado a sus Drones
+
+                print("Celda: "+ str(celdaActual)+ "moveLlegadas es: ")
+                print(arrivingBool)
 
                 initialUAVs[indicesUAVinCell]=CurrentCellInfo[0:aNumber] #actualizacion en informacion global
         if video:
@@ -129,4 +138,8 @@ for densidadActualSim in range(densidadMin,densidadMax+1,2): #Densidad (#targets
     ####################################################################################################################################################
     ##  FIN                                 Simulacion de asignacion Monotonica GRID target Assgmt (Densidad Actual)
     ####################################################################################################################################################
-    
+print("Todas las celdas alcanzadas: " +str(cellsMet))
+print("Terminado")
+print(range(initialUAVs.shape[0]))
+print(initialUAVs)
+print(initialUAVsZero)
