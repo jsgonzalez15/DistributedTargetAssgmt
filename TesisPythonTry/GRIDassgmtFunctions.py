@@ -21,6 +21,14 @@ def CurrentCell(p:list,C:list,radOper:int,div:int)->int:
     #Retorna la celda actual del UAV
     currentColumn=math.ceil((p[0]/(radOper/1000))*div)-1 #columna actual
     currentLine=div-math.ceil((p[1]/(radOper/1000))*div) #fila actual
+    if currentColumn<0:
+        currentColumn=0
+    if currentLine<0:
+        currentLine=0
+    if currentLine==div:
+        currentLine=div-1
+    if currentColumn==div:
+        currentColumn=div-1
     yourCell=C[currentLine][currentColumn] #celda actual
     return yourCell
 

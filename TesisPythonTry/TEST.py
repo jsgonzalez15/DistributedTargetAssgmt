@@ -53,6 +53,11 @@ img= img.reshape(plt.gcf().canvas.get_width_height()[::-1] + (3,))
 img = cv2.cvtColor(img,cv2.COLOR_RGB2BGR)
 # display image with opencv or any operation you like
 cv2.imshow("plot",img)
-cv2.waitKey()'''
+cv2.waitKey()
 a=np.array([True, True])
-print(a.all()==True)
+print(a.all()==True)'''
+a=np.array([1,2,3,4,5,6,7,8])
+a=np.delete(a,[0,1,4])
+print(a)
+a=np.append(a,[1,2,3])
+print(a)
