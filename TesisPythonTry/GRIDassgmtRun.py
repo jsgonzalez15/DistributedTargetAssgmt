@@ -75,17 +75,18 @@ for densidadActualSim in range(densidadMin,densidadMax+1,2): #Densidad (#targets
     ####################################################################################################################################################
     ##  (INICIO)                             Simulacion de asignacion Monotonica GRID target Assgmt (Densidad Actual)
     ####################################################################################################################################################
-    placesMet=np.array([]) #Objetivos que han sido alcanzados
+    placesMet=np.array([[-1,-1]]) #Objetivos que han sido alcanzados (inicializado con valor dummie)
     iterations=0 #Iteraciones hasta alcanzar objetivos
     if video:
-        fourcc=cv2.VideoWriter_fourcc(*'XVID')
+        fourcc=cv2.VideoWriter_fourcc(*'MP4V')
         theVideo=cv2.VideoWriter('TestVideo.mp4',fourcc,10,(640,480))
     
-    for i in range(2): #Sim hasta:(a) todos los UAV llegaron, o, (b) targets agotados
+    for i in range(7): #Sim hasta:(a) todos los UAV llegaron, o, (b) targets agotados
         for i in range(50):
             print("Actualización: "+str(i)+", en iteracion actual")
             cellsMet=True #booleano que indica si los objetivos fueron alcanzados en todas las celdas
-            placesMetIndex=[] #lista de indices de objetivos alcanzados para eliminación en ciclo final
+            placesMetIndex=np.array([]) #lista de indices de objetivos alcanzados para eliminación en ciclo final
+
             for celdaActual in range(1,div**2+1): #recorrido sobre todas las celdas
                 asignados=0 #cantidad de UAVs asignados en celda de iteracion actual
                 distancias=[] #vector de distancias actuales entre asignados y objetivos
@@ -99,41 +100,82 @@ for densidadActualSim in range(densidadMin,densidadMax+1,2): #Densidad (#targets
                 
                 ''' ############################  Revision de la celda cuando hay UAVs presentes  ############################ '''
                 if aNumber!=0:
-                    GRIDFcns.initialScatter(places,initialUAVs,initialUAVsZero,div,radOper,C,autom,video)                
-                    if len(CurrentCellInfo)-aNumber<aNumber:
-                        asignados=len(CurrentCellInfo)-aNumber
+                    GRIDFcns.initialScatter(places,initialUAVs,initialUAVsZero,div,radOper,C,autom,video) 
+                    aNumberPlaces=len(CurrentCellInfo)-aNumber               
+                    if aNumberPlaces<aNumber:
+                        asignados=aNumberPlaces
+                        notAsigned=np.array(CurrentCellInfo[:])
+                        print("Información actual en la celda:")
+                        print(CurrentCellInfo)
+                        print("Sin asignar lectura:")
+                        print(notAsigned)
+                        print("Los asignados son: " +str(asignados)+", los UAVs totales son:"+str(aNumber))
+                        notAsigned[asignados:aNumber,2]=-1 #ID UAVs no asignados
+                        print("Sin asignar ID modificado:")
+                        print(notAsigned)
+                        CurrentCellInfo[asignados:aNumber]=notAsigned.tolist()
+                        print("Información actualizada en la celda:")
+                        print(CurrentCellInfo)
                     else:
                         asignados=aNumber
-                    
-                    #vector de distancias con max match entre UAV's y objetivos
-                    distancias=np.array(CurrentCellInfo[aNumber:aNumber+asignados])-np.array(CurrentCellInfo[0:aNumber])[:,[0,1]]
-                    normas=np.linalg.norm(distancias,axis=1)
-                    normasMatrix=np.c_[normas,normas] #duplicar columnas para operacion punto a punto con distancias
-                    vunit=np.divide(distancias,normasMatrix) #vector unitario de movimiento UAV-lugar
-                    #corrección para problemas con división por cero y Nan resultante
-                    vunit=np.nan_to_num(vunit)
-                    dx=vunit*dt #vector de movimiento según dt
-                    dxnorm=np.linalg.norm(dx,axis=1)
-                    arrivingBool=dxnorm*dt>=normas*dt #vector de booleanos para movimiento de llegada
-                    arrivingBoolMatrix=np.c_[arrivingBool,arrivingBool] #matriz de booleanos para operaciones de movimiento
-                    rowIndex=np.array(range(asignados))
-                    colIndex=np.array([0,1])
-                    
-                    #vector de movimiento para llegada, se asigna la distancia del objetivo actual
-                    moveLlegadas= np.c_[CurrentCellInfo[aNumber:aNumber+asignados]*arrivingBoolMatrix,np.transpose(np.zeros((1,distancias.shape[0]))+arrivingBool)] 
-                    #vector de movimiento diferencial, se asigna la suma de la posición actual y el movimiento calculado
-                    moveDistancias= CurrentCellInfo[0:aNumber]*(np.c_[arrivingBoolMatrix,arrivingBool]-1)*(-1)+ np.c_[dx*(arrivingBoolMatrix-1)*(-1),np.zeros((distancias.shape[0],1))]
-                    CurrentCellInfo[0:aNumber]=moveLlegadas + moveDistancias #Suma exclusiva de actualización
 
-                    if arrivingBool.all()==True:
-                        cellsMet=cellsMet and True  #celda actual satisface asignacion
-                        placesMetIndex.append(placesInCellIndex)
-                    else:
-                        cellsMet=cellsMet and False #celda actual no ha trasladado a sus Drones
-                        placesMetIndex=[]
+                        ############################################### movimiento para UAV's asignados ###############################################
+                    if asignados>0:
+                        #vector de distancias con max match entre UAV's y objetivos
+                        distancias=np.array(CurrentCellInfo[aNumber:aNumber+asignados])-np.array(CurrentCellInfo[0:aNumber])[:,[0,1]]
+                        normas=np.linalg.norm(distancias,axis=1)
+                        normasMatrix=np.c_[normas,normas] #duplicar columnas para operacion punto a punto con distancias
+                        vunit=np.divide(distancias,normasMatrix) #vector unitario de movimiento UAV-lugar
+                        #corrección para problemas con división por cero y Nan resultante
+                        vunit=np.nan_to_num(vunit)
+                        dx=vunit*dt #vector de movimiento según dt
+                        dxnorm=np.linalg.norm(dx,axis=1)
+                        arrivingBool=dxnorm*dt>=normas*dt #vector de booleanos para movimiento de llegada
+                        arrivingBoolMatrix=np.c_[arrivingBool,arrivingBool] #matriz de booleanos para operaciones de movimiento
+                        rowIndex=np.array(range(asignados))
+                        colIndex=np.array([0,1])
+                        
+                        ids=np.array(CurrentCellInfo[0:asignados])
+                        ids=ids[:,2]
+                        #vector de movimiento para llegada, se asigna la distancia del objetivo actual
+                        moveLlegadas= np.c_[CurrentCellInfo[aNumber:aNumber+asignados]*arrivingBoolMatrix,ids] #np.transpose(np.zeros((1,distancias.shape[0]))+arrivingBool)
+                        #vector de movimiento diferencial, se asigna la suma de la posición actual y el movimiento calculado
+                        moveDistancias= CurrentCellInfo[0:aNumber]*(np.c_[arrivingBoolMatrix,arrivingBool]-1)*(-1)+ np.c_[dx*(arrivingBoolMatrix-1)*(-1),np.zeros((distancias.shape[0],1))]
+                        CurrentCellInfo[0:aNumber]=moveLlegadas + moveDistancias #Suma exclusiva de actualización
 
-                    print("Celda: "+ str(celdaActual)+ "moveLlegadas es: ")
-                    print(arrivingBool)
+                        if arrivingBool.all()==True:
+                            cellsMet=cellsMet and True  #celda actual satisface asignacion
+                            print("índices actuales:")
+                            print(placesInCellIndex[0:asignados])
+                            placesMetIndex=np.concatenate((placesMetIndex,np.array(placesInCellIndex[0:asignados])))
+                            placesMetIndex=placesMetIndex.astype(int)
+                            print(placesMetIndex)
+                        else:
+                            cellsMet=cellsMet and False #celda actual no ha trasladado a sus Drones
+                            print("indices reiniciados:")
+                            placesMetIndex=np.array([])
+
+                        print("Celda: "+ str(celdaActual)+ "moveLlegadas es: ")
+                        print(arrivingBool)
+
+                        ############################################# movimiento para UAV's no asignados ##############################################
+                    if asignados<aNumber:
+                        asignadosBlw=0 #Conteo de UAV's asignados a celdas inferiores
+                        asignadosRght=0 #Conteo de UAV's asignados a celdas superiores
+                        for asignando in range(aNumber-asignados+1):
+                            if(deltaMatrix(2*currentRow,currentColumn)-asignadosBlw>0): #delta blw
+                                vunit=[0,-1] #abajo
+                                asignadosBlw=asignadosBlw+1
+                            elif not (currentRow == div):
+                                vunit=[0,1] #arriba
+                            elif (currentRow==div):
+                                if(deltaRight(currentColumn)-asignadosRght>0): #delta rght
+                                    vunit=[1,0]
+                                    asignadosRght=asignadosRght+1
+                                elif not(currentColumn==1):
+                                    vunit=[-1,0]
+                            dx=vunit*dt
+                            CurrentCellInfo[asignados+asignando]=dx.append(-1)
 
                     initialUAVs[indicesUAVinCell]=CurrentCellInfo[0:aNumber] #actualizacion en informacion global
             if video:
@@ -145,8 +187,16 @@ for densidadActualSim in range(densidadMin,densidadMax+1,2): #Densidad (#targets
                 
     #            for celdaActual=1:div-1:#Recorrido ultima fila (actualizacion delta columnas siguientes
     #                    deltaRight(div-celdaActual)= deltaRight(div-celdaActual+1)+deltaMatrix(2*div,div-celdaActual+1)+deltaMatrix(2*div-1,div-celdaActual+1)
-        placesMet=np.append((placesMet,places[np.matrix.flatten(np.array(placesMetIndex))])) #guardado de lugares alcanzados
-        places=np.delete(places,placesMetIndex) #eliminacion de objetivos alcanzados
+        print("Indices de lugares alcanzados:")
+        print(placesMetIndex)
+        print("Lugares alcanzados:")
+        print(placesMet)
+        print("Lugares actuales:")
+        print(places)
+        placesMet=np.concatenate((placesMet,places[placesMetIndex])) #guardado de lugares alcanzados
+        places=np.delete(places,placesMetIndex,0) #eliminacion de objetivos alcanzados
+        print("Lugares Restantes:")
+        print(places)
         iterations=iterations+1
     ####################################################################################################################################################
     ##  FIN                                 Simulacion de asignacion Monotonica GRID target Assgmt (Densidad Actual)

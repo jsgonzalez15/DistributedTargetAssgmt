@@ -25,12 +25,13 @@ import numpy as np
 
 ''' Parámetros generales de simulación'''
 [densidadMin,densidadMax]=[6,6] #Rango de densidades a simular
-placesPerUAV=6 #Proporción de objetivos por UAV
-consumoDensidad=[] #valores medios y desviación estándar por densidad
-consumoIteracion=[] #valores medios y desviación estándar en consumo por iteración
-desviacionConsumoUAVs=0 #max desv de consumo entre UAVs (ideal 0)
+qPerUAV=6 #Proporción de objetivos por UAV
+w_Densidad=[] #valores medios y desviación estándar por densidad de consumo
+w_Iteracion=[] #valores medios y desviación estándar en consumo por iteración
+desv_w_p=0 #max desv de consumo entre UAVs (ideal 0)
 divIniciales=3 #divisiones iniciales
 simulacionesPorDensidad=100 #n sim por densidad
+divMethod="GRID" #tipo de particion del espacio
 dt=0.3
 
 video=0 #obtener un video de simulación (1) ejecutar sin video (0)
@@ -39,17 +40,38 @@ changeDiv=1 #cambiar div durante sim(1)/ mantener div(0)
 video=True
 
 ''' ############################  Inicializacion escenario, UAVs, Puntos Recolección y objetivos  ############################ '''
-nPlaces=90 #Numero de Objetivos
-nUAVs=round(nPlaces/placesPerUAV) #Numero de UAVs segun densidad deseada
-nRecolectors=5 #Numero de Puntos Recolección/despliegue
+nQ=90 #Numero de Objetivos
+nP=round(nQ/qPerUAV) #Numero de UAVs segun densidad deseada
+nR=5 #Numero de Puntos Recolección/despliegue
 
-places=np.random.rand(nPlaces,2)*radOper/1000 #(x,y) posiciones [km] en AreaOperaciones 
-recolectors=np.random.rand(nRecolectors,2)*radOper/1000 #(x,y) posiciones [km] en AreaOperaciones
-consumoUAVs= np.zeros(nUAVs) #Registro de consumo por UAV
+q=np.random.rand(nQ,2)*radOper/1000 #(x,y) posiciones [km] de objetivos en AreaOperaciones 
+r=np.random.rand(nR,2)*radOper/1000 #(x,y) posiciones [km] de recolectores en AreaOperaciones
+w= np.zeros(nP) #Registro de consumo por UAV
 
-initialUAVs= np.random.rand(nUAVs,2)*radOper/1000 #Ubicaciones iniciales en Recolectores aleatorios   
-print(recolectors)
-for initialUAVsIndex in range(nUAVs):
-    initialUAVs[initialUAVsIndex]=recolectors[int(round(np.random.rand()*nRecolectors-0.5))] + (np.random.rand(1,2)-0.5)
-print(initialUAVs)
+################################ division de espacio en cuadrículas ################################
+if autom:
+    div=divIniciales #div default
+else:
+    div=input('Ingrese el numero de divisiones') #base y altura de la malla (div personalizado)
+####################################################################################################
+
+p= np.random.rand(nP,2)*radOper/1000   #inicializacion de matriz de UAVs
+for pIndex in range(nP): #Ubicaciones iniciales en Recolectores aleatorios 
+    p[pIndex]=r[int(round(np.random.rand()*nR-0.5))] + (np.random.rand(1,2)-0.5)
+pZero=p
+C=np.array([range((div-1)*div+1,div*div+1)]) # Matriz de indices para identificar celdas
+for i in range(div-1,0,-1):
+    C=np.append(C,[range((i-1)*div+1,div*i+1)],axis=0)
+
+TesisFcns.initialScatter(q,r,p,pZero,div,radOper,C,autom,video) #ploteo inicial
+
+for iter in range(40):
+    ''' CONDICIONAR RECORRIDO CON EL NUMERO DE NODOS EN TIPO DE PARTICION ESPACIAL'''
+    for nodoActual in range(1,div**2+1): #recorrido sobre todas las celdas 
+        [pInNode, qInNode, indexP,indexQ]= GRIDFcns.pqrInNode(nodoActual,p,q,r,C,radOper,div)
+        
+
+
+
+
 

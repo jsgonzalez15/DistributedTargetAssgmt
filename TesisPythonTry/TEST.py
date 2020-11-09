@@ -56,8 +56,13 @@ cv2.imshow("plot",img)
 cv2.waitKey()
 a=np.array([True, True])
 print(a.all()==True)'''
-a=np.array([1,2,3,4,5,6,7,8])
-a=np.delete(a,[0,1,4])
+a=np.array([[1,1],[2,3],[4,5],[6,7],[5,5],[6,9],[17,10],[8,90]])
+print(a[0:0])
+a=np.delete(a,[0,1,4],0)
 print(a)
-a=np.append(a,[1,2,3])
-print(a)
+a[2:5,1]=1
+print(a[:,0:2])
+
+matriz=[[1,2,3,4,5,6],[2,-1,-4,-5,3,6],[6,5,4,3,2,1]]
+n=[(y,i,matriz[y][i]) for y in range(len(matriz)) for i in range(len(matriz[0])) if  matriz[y][i]>0]
+print(n)
