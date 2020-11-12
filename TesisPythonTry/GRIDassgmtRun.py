@@ -129,7 +129,7 @@ for densidadActualSim in range(densidadMin,densidadMax+1,2): #Densidad (#targets
                         #corrección para problemas con división por cero y Nan resultante
                         vunit=np.nan_to_num(vunit)
                         dx=vunit*dt #vector de movimiento según dt
-                        dxnorm=np.linalg.norm(dx,axis=1)
+                        dxnorm=np.sqrt(np.sum(np.multiply(dx,dx),axis=1))
                         arrivingBool=dxnorm*dt>=normas*dt #vector de booleanos para movimiento de llegada
                         arrivingBoolMatrix=np.c_[arrivingBool,arrivingBool] #matriz de booleanos para operaciones de movimiento
                         rowIndex=np.array(range(asignados))

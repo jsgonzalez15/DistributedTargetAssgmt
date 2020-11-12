@@ -56,13 +56,11 @@ cv2.imshow("plot",img)
 cv2.waitKey()
 a=np.array([True, True])
 print(a.all()==True)'''
-a=np.array([[1,1],[2,3],[4,5],[6,7],[5,5],[6,9],[17,10],[8,90]])
-print(a[0:0])
-a=np.delete(a,[0,1,4],0)
-print(a)
-a[2:5,1]=1
-print(a[:,0:2])
-
-matriz=[[1,2,3,4,5,6],[2,-1,-4,-5,3,6],[6,5,4,3,2,1]]
-n=[(y,i,matriz[y][i]) for y in range(len(matriz)) for i in range(len(matriz[0])) if  matriz[y][i]>0]
-print(n)
+a=np.array([[1,1],[2,4],[3,9],[4,5],[5,10],[6,12]])
+b=np.array([[2,2],[3,5],[4,12]])
+boo=np.array([[-1,-2,5,-2,2,3]])
+c=-b[:,0].reshape(b.shape[0],1)+(a[:,0]).reshape(1,a.shape[0])
+d=b[:,1].reshape(b.shape[0],1)-(a[:,1]).reshape(1,a.shape[0])
+print(c)
+print(c>boo)
+print(np.sqrt(np.sum(np.multiply(a,a),axis=1)))

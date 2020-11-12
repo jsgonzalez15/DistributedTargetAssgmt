@@ -64,8 +64,12 @@ def pqrInNode(theNode:int,p:list,q:list,r:list,C:list,radOper:int,div:int,divMet
         if currentNode(q[k,:],C,radOper,div,divMethod)==theNode:
             pInNode.append(q[k,:])
             indexQ.append(k)
-    #TERMINAR
-    return [pInNode, indexP, qInNode, indexQ, rNode]
+
+    centerToR=np.array(r)-theCenter
+    minDistance=np.min(np.sqrt(centerToR.dot(centerToR))) #obtiene la distancia al recolector más cercano
+    rNode=r[np.where(centerToR==minDistance)] #obtiene el nodo asociado a esta distancia mínima
+
+    return [np.array(pInNode), indexP, np.array(qInNode), indexQ, np.array(rNode)]
 
 def currentNode(p:list,C:list,radOper:int,div:int, divMethod:str)->list:
     #Retorna el numero del nodo y las coordenadas de su centro para el p recibido

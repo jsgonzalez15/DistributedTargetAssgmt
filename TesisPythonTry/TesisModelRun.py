@@ -68,8 +68,22 @@ TesisFcns.initialScatter(q,r,p,pZero,div,radOper,C,autom,video) #ploteo inicial
 for iter in range(40):
     ''' CONDICIONAR RECORRIDO CON EL NUMERO DE NODOS EN TIPO DE PARTICION ESPACIAL'''
     for nodoActual in range(1,div**2+1): #recorrido sobre todas las celdas 
-        [pInNode, qInNode, indexP,indexQ]= GRIDFcns.pqrInNode(nodoActual,p,q,r,C,radOper,div)
-        
+        [pInNode, indexP, qInNode,indexQ,rNode]= GRIDFcns.pqrInNode(nodoActual,p,q,r,C,radOper,div)
+        Amatrix= np.zeros((qInNode.shape[0],pInNode.shape[0])) #inicialización de matriz de pesos
+
+        #Matriz de distancias P_i a Q_i
+        xdeltapq= qInNode[:,0].reshape(qInNode.shape[0],1)-pInNode[:,0].reshape(1,pInNode.shape[0])
+        ydeltapq= qInNode[:,1].reshape(qInNode.shape[0],1)-pInNode[:,1].reshape(1,pInNode.shape[0])
+        distancepq= np.sqrt(np.add(np.square(xdeltapq),np.square(ydeltapq)))
+        #Matriz de distancias Q_i a R_i
+        xdeltaqr= np.ones(qInNode.shape[0],1)*rNode[0] -qInNode[:,0].reshape(1,qInNode.shape[0])
+        ydeltaqr= np.ones(qInNode.shape[0],1)*rNode[1] -qInNode[:,1].reshape(1,qInNode.shape[0])
+        distanceqr= np.sqrt(np.add(np.square(xdeltaqr),np.square(ydeltaqr)))
+
+        Amatrix=distancepq*PtOptimum/vOptimum +distanceqr*PtOptimum/vOptimum #matriz de pesos
+        wNode=w[indexP]
+        asignE=Amatrix>wNode #inicialización de la matriz con arcos que pueden ser recorridos
+
 
 
 
