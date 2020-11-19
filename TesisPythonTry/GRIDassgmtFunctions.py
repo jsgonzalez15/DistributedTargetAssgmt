@@ -119,4 +119,4 @@ def CalcularParametrosEnergeticos()->list:
     # Radio de operaciones en m para densidades
     radOper=maxDistanceOpt*0.95/2
     radOper2=maxDistanceOpt2*0.95/2#
-    return [radOper,PtOptimum,vOptimum]
+    return [radOper,PtOptimum,vOptimum,capJoules]

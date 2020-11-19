@@ -38,7 +38,7 @@ def initialScatter (q,r,p,pZero,div,radOper,C,autom,video):
     plt.title('Evolución de envios distribuidos')
     plt.legend()
     plt.gcf().canvas.draw()
-    plt.show()
+    #plt.show()
     #if not video:
         #print("InitialScatter says: not Showing for now")
         #plt.show()
@@ -52,22 +52,25 @@ def pqrInNode(theNode:int,p:list,q:list,r:list,C:list,radOper:int,div:int,divMet
     qInNode=[] #Matriz con ubicaciones de objetivos en nodo
     indexP=[] #Vector con indices de UAVs encontrados en matriz p
     indexQ=[] #Vector con indices de Objetivos encontrados en matriz q
-    theCenter=[] #Punto central del nodo
+    theCenter=np.array([0,0]) #Punto central del nodo
 
     for j in range(len(p)): #filas equivalentes a # de UAVs
         [yourNode,center]=currentNode(p[j,:],C,radOper,div,divMethod)
         if yourNode==theNode:
             pInNode.append(p[j,:])
             indexP.append(j)
-            theCenter=center
+            theCenter=np.array(center)
     for k in range(len(q)): #filas equivalentes a # de Objetivos
-        if currentNode(q[k,:],C,radOper,div,divMethod)==theNode:
-            pInNode.append(q[k,:])
+        if currentNode(q[k,:],C,radOper,div,divMethod)[0]==theNode:
+            qInNode.append(q[k,:])
             indexQ.append(k)
-
+    #print("Centro actual ", theCenter)
     centerToR=np.array(r)-theCenter
-    minDistance=np.min(np.sqrt(centerToR.dot(centerToR))) #obtiene la distancia al recolector más cercano
-    rNode=r[np.where(centerToR==minDistance)] #obtiene el nodo asociado a esta distancia mínima
+    #print("Distancia del centro a los r ",centerToR)
+    minDistances=np.sqrt(np.sum(np.multiply(centerToR,centerToR))) #obtiene la distancia al recolector más cercano
+    rNode=r[np.where(np.min(minDistances)==minDistances)[0]] #obtiene el nodo asociado a esta distancia mínima
+    #print("Distancia minima actual ", np.min(minDistances))
+    #print("Nodo recolector seleccionado ", rNode)
 
     return [np.array(pInNode), indexP, np.array(qInNode), indexQ, np.array(rNode)]
 
@@ -78,7 +81,7 @@ def currentNode(p:list,C:list,radOper:int,div:int, divMethod:str)->list:
         currentColumn=math.ceil((p[0]/(radOper/1000))*div)-1 #columna actual
         currentLine=div-math.ceil((p[1]/(radOper/1000))*div) #fila actual
         #centro de nodo en división del método GRID
-        center=[((currentColumn-0.5)*radOper/1000)/div,((currentColumn-0.5)*radOper/1000)/div]
+        center=[((currentColumn+0.5)*radOper/1000)/div,((currentLine+0.5)*radOper/1000)/div]
 
         #condicionales para casos excepcionales
         if currentColumn<0:

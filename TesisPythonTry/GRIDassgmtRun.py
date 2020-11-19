@@ -79,7 +79,7 @@ for densidadActualSim in range(densidadMin,densidadMax+1,2): #Densidad (#targets
     iterations=0 #Iteraciones hasta alcanzar objetivos
     if video:
         fourcc=cv2.VideoWriter_fourcc(*'MP4V')
-        theVideo=cv2.VideoWriter('TestVideo.mp4',fourcc,10,(640,480))
+        theVideo=cv2.VideoWriter('GRIDSimVideo.mp4',fourcc,10,(640,480))
     
     for i in range(7): #Sim hasta:(a) todos los UAV llegaron, o, (b) targets agotados
         for i in range(50):
