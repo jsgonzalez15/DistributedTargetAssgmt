@@ -20,18 +20,18 @@ def initialScatter (q,r,p,pZero,div,radOper,C,autom,video):
     ##--------------------------------------PLOTEO PARA CUADRÍCULAS----------------------------------------##
     [Xb,Yb]=np.meshgrid(gridNodes,gridNodes) 
     plt.cla() #Se borra información anterior al ploteo actual
-    plt.plot(Xb,Yb,'k--',lineWidth=1)
-    plt.plot(Yb,Xb,'k--',lineWidth=1)
+    plt.plot(Xb,Yb,'k--',linewidth=1)
+    plt.plot(Yb,Xb,'k--',linewidth=1)
     ##------------------------------------------------------------------------------------------------------##
 
     for j in range(p.shape[0]):
-        plt.plot([pZero[0,0],p[0,0]],[pZero[0,1],p[0,1]],'b--',lineWidth=0.5)
+        plt.plot([pZero[0,0],p[0,0]],[pZero[0,1],p[0,1]],'b--',linewidth=0.5)
     
-    plt.scatter(q[:,0],q[:,1],marker='o',c='None', edgecolor='red',lineWidth=0.7,label='Objetivos')
-    plt.scatter(p[:,0],p[:,1], marker='x',color='b',lineWidth=0.7,label='UAVs')
-    plt.scatter(r[:,0],r[:,1], c='None', marker='h',edgecolor='g',lineWidth=0.7,label='Recolectores')
+    plt.scatter(q[:,0],q[:,1],marker='o',c='None', edgecolor='red',linewidth=0.7,label='Objetivos')
+    plt.scatter(p[:,0],p[:,1], marker='x',color='b',linewidth=0.7,label='UAVs')
+    plt.scatter(r[:,0],r[:,1], c='None', marker='h',edgecolor='g',linewidth=0.7,label='Recolectores')
 
-    plt.plot([pZero[0,0],p[0,0]],[pZero[0,1],p[0,1]],'b--',lineWidth=0.5)
+    plt.plot([pZero[0,0],p[0,0]],[pZero[0,1],p[0,1]],'b--',linewidth=0.5)
     plt.xlabel('x (km)')
     plt.ylabel('y (km)')
     ''' CONDICIONAR TITLE SEGUN PARTICION'''
@@ -88,9 +88,9 @@ def currentNode(p:list,C:list,radOper:int,div:int, divMethod:str)->list:
             currentColumn=0
         if currentLine<0:
             currentLine=0
-        if currentLine==div:
+        if currentLine>=div:
             currentLine=div-1
-        if currentColumn==div:
+        if currentColumn>=div:
             currentColumn=div-1
         yourNode=C[currentLine][currentColumn] #celda actual
         return [yourNode,center]
