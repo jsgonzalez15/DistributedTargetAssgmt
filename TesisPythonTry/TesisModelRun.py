@@ -16,6 +16,7 @@ import TesisModelFunctions as TesisFcns
 from matplotlib import pyplot as plt
 import numpy as np
 import cv2
+import time
 #####################################################################################################################
 ##                               Simulación de Método Distribuido: Min Costo UAV/Destino
 #####################################################################################################################
@@ -26,7 +27,7 @@ np.seterr(divide='ignore', invalid='ignore')
 
 ''' Parámetros generales de simulación'''
 [densidadMin,densidadMax]=[6,6] #Rango de densidades a simular
-qPerUAV=6 #Proporción de objetivos por UAV
+qPerUAV=10 #Proporción de objetivos por UAV
 w_Densidad=[] #valores medios y desviación estándar por densidad de consumo
 w_Iteracion=[] #valores medios y desviación estándar en consumo por iteración
 desv_w_p=0 #max desv de consumo entre UAVs (ideal 0)
@@ -49,6 +50,8 @@ r=np.random.rand(nR,2)*radOper/1000 #(x,y) posiciones [km] de recolectores en Ar
 q=np.random.rand(nQ,2)*radOper/1000 #(x,y) posiciones [km] de objetivos en AreaOperaciones 
 qNodes=np.ones(nQ)*(-1) #(z) nodos en los que se encuentran q
 w=np.ones(nP)*capJoules #Registro de consumo por UAV (Energía restante)
+winit=np.array(w)
+wMin= capJoules*0.05
 
 p= np.random.rand(nP,2)*radOper/1000   #inicializacion de matriz de UAVs
 for pItem in range(nP): #Ubicaciones iniciales en Recolectores aleatorios 
@@ -88,20 +91,20 @@ allQMet=np.array([[-1,-1]]) #Objetivos que han sido alcanzados (inicializado con
 '''##################################################################################################################
 ##                                      EJECUCIÓN PRINCIPAL DEL ALGORITMO
 #####################################################################################################################'''
-for iter in range(6): #Sim hasta:(a) todo P ha llegado, o, (b) Q agotados
+for iter in range(qPerUAV+3): #Sim hasta:(a) todo P ha llegado, o, (b) Q agotados
 
-    for deltaT in range(130):
+    for deltaT in range(150):
         print("///////////////////////////////////////// Iteración simulada: ", iter," /// Delta T simulado: ", deltaT)
         qDone=np.array([]) #lista de indices de objetivos alcanzados para eliminación en ciclo final
         qDoneU=np.array([]) #lista de indices alcanzados para eliminación parcial (ciclo Internodal)
         nodesMet=True #booleano que indica si los objetivos fueron alcanzados en todos los nodos
         indexU=np.array([]) #arreglo de indices de P unassigned
-
+        finalReturn=False 
         ######################################################################################################
         ##                      Asignación y Movimiento Intranodal
         ######################################################################################################
         for nodoActual in range(1,div**2+1): #recorrido sobre todos los nodos 
-            [pInNode, indexP, qInNode, indexQ, rNode]= TesisFcns.pqrInNode(nodoActual,p,q,r,C,radOper,div,divMethod)
+            [pInNode, indexP, qInNode, indexQ]= TesisFcns.pqrInNode(nodoActual,p,q,r,C,radOper,div,divMethod)
             if not np.array(indexQ).shape[0]==0:
                 qNodes[np.array(indexQ).astype(int)]=nodoActual #nodos de Q
             if not np.array(indexP).shape[0]==0:
@@ -112,8 +115,9 @@ for iter in range(6): #Sim hasta:(a) todo P ha llegado, o, (b) Q agotados
             if not pInNode.shape[0]==0 and qInNode.shape[0]==0: #solo hay U (no hay Q) en Nodo actual
                 indexUinNode=np.array(indexP)
 
-            if not pInNode.shape[0]==0 and not qInNode.shape[0]==0:
+            if not pInNode.shape[0]==0 and not qInNode.shape[0]==0: #hay p y q en Nodo actual
                 Amatrix= np.zeros((qInNode.shape[0],pInNode.shape[0])) #inicialización de matriz de pesos
+                RperQNode=np.array(RperQ[np.array(indexQ)]) #R^[i]
 
                 #Matriz de distancias P_i a Q_i
                 xdeltapq= qInNode[:,0].reshape(qInNode.shape[0],1)-pInNode[:,0].reshape(1,pInNode.shape[0])
@@ -121,17 +125,40 @@ for iter in range(6): #Sim hasta:(a) todo P ha llegado, o, (b) Q agotados
                 distancepq= np.sqrt(np.add(np.square(xdeltapq),np.square(ydeltapq)))
 
                 #Matriz de distancias Q_i a R_i
-                xdeltaqr= np.ones((pInNode.shape[0],1))*rNode[0,0] -qInNode[:,0].reshape(1,qInNode.shape[0])
-                ydeltaqr= np.ones((pInNode.shape[0],1))*rNode[0,1] -qInNode[:,1].reshape(1,qInNode.shape[0])
+                xdeltaqr= np.zeros((pInNode.shape[0],1))+ RperQNode[:,0].reshape(1,qInNode.shape[0]) -qInNode[:,0].reshape(1,qInNode.shape[0])
+                ydeltaqr= np.zeros((pInNode.shape[0],1))+ RperQNode[:,1].reshape(1,qInNode.shape[0]) -qInNode[:,1].reshape(1,qInNode.shape[0])
                 distanceqr= np.sqrt(np.add(np.square(xdeltaqr),np.square(ydeltaqr))).T
 
                 Amatrix=distancepq*PtOptimum/vOptimum +distanceqr*PtOptimum/vOptimum #matriz de pesos
                 wNode=w[indexP]
                 asignE=Amatrix<wNode #inicialización de la matriz con arcos que pueden ser recorridos
+                asignE=asignE*(np.zeros((Amatrix.shape))+wMin<wNode)
+
+                #Matriz de distancias P_i a R
+                xdeltapr= r[:,0].reshape(r.shape[0],1)-pInNode[:,0].reshape(1,pInNode.shape[0])
+                ydeltapr= r[:,1].reshape(r.shape[0],1)-pInNode[:,1].reshape(1,pInNode.shape[0])
+                distancepr= np.sqrt(np.add(np.square(xdeltapr),np.square(ydeltapr)))
+
+                #Casos de retorno P a R
+                asignPtoR=np.dot(np.ones((1,asignE.shape[0])),asignE)==0
+                asignPtoR=asignPtoR.reshape(asignPtoR.shape[1],1)
+
+                for rC in range(asignE.shape[1]): #Possible return Column
+                    if asignPtoR[rC]:
+                        rR= np.where(distancepr[:,rC]==np.min(distancepr[:,rC]))[0] #return Row (distancia a r más cercano)
+                        pLlegadaR=distancepr<=dt #matriz con booleanos para llegada
+                        print("p antes de:",p[indexP[rC]], "w antes de:", w[indexP[rC]])
+                        #deltax y deltay individual segun distancia restante
+                        prdeltax=(pLlegadaR[rR,rC]-1)*(-1)*(np.nan_to_num(xdeltapr[rR,rC]/distancepr[rR,rC]))*dt +pLlegadaR[rR,rC]*(xdeltapr[rR,rC])
+                        prdeltay=(pLlegadaR[rR,rC]-1)*(-1)*(np.nan_to_num(ydeltapr[rR,rC]/distancepr[rR,rC]))*dt +pLlegadaR[rR,rC]*(ydeltapr[rR,rC])
+                        pInNode[rC]=pInNode[rC]+np.c_[prdeltax,prdeltay]
+                        p[indexP[rC]]=pInNode[rC] #actualizacion en posicion global
+                        w[indexP[rC]]=w[indexP[rC]]- 1000*np.sqrt(np.square(prdeltax)+np.square(prdeltay))*PtOptimum/vOptimum
+                        print("p despues de:",p[indexP[rC]],"w antes de:", w[indexP[rC]])
+                        print("rR: ",rR, "rC:", rC, "prdeltax:",prdeltax,"prdeltay:",prdeltay)
+
                 asigned=np.zeros((qInNode.shape[0],pInNode.shape[0])) #matriz con p asignados
-                Amatrix= Amatrix- distanceqr*PtOptimum/vOptimum #Actualizacion a pesos por recorrido individual
-                #print("Amatrix: ", Amatrix)
-                #print("asignE inicial: ", asignE)
+                Amatrix= Amatrix-distanceqr*PtOptimum/vOptimum #Actualizacion a pesos por recorrido individual
                 
                 #eliminacion de arcos no eficientes
                 for row in range(Amatrix.shape[0]):
@@ -161,6 +188,7 @@ for iter in range(6): #Sim hasta:(a) todo P ha llegado, o, (b) Q agotados
                 xmove=np.dot(np.ones(asignE.shape[0]),deltax)
                 ymove=np.dot(np.ones(asignE.shape[0]),deltay)
                 p[indexP]=pInNode +np.c_[xmove,ymove]
+                w[indexP]=w[indexP]- 1000*np.sqrt(np.add(np.square(xmove),np.square(ymove)))*PtOptimum/vOptimum
 
                 #Identificacion de objetivos recorridos en celda actual
                 inNodeQdone=np.where(distancepq<=0.01)[0]
@@ -252,7 +280,34 @@ for iter in range(6): #Sim hasta:(a) todo P ha llegado, o, (b) Q agotados
             
             #Actualizacion en P global
             p[indexU]=np.array(u)
-            
+            w[indexU]=w[indexU]- 1000*np.sqrt(np.add(np.square(xmove),np.square(ymove)))*PtOptimum/vOptimum
+
+        ######################################################################################################
+        ##                      Retorno de U a R
+        ######################################################################################################
+        if q.shape[0]<p.shape[0]:
+            returnU=p[indexU]
+            #Matriz de distancias U_i a R
+            xdeltaur= r[:,0].reshape(r.shape[0],1)-returnU[:,0].reshape(1,returnU.shape[0])
+            ydeltaur= r[:,1].reshape(r.shape[0],1)-returnU[:,1].reshape(1,returnU.shape[0])
+            distanceur= np.sqrt(np.add(np.square(xdeltaur),np.square(ydeltaur)))
+
+            finalReturn=True
+            UinR=True
+            for rC in range(returnU.shape[0]): #Possible return Column
+                rR= np.where(distanceur[:,rC]==np.min(distanceur[:,rC]))[0] #return Row (distancia a r más cercano)
+                uLlegadaR=distanceur<=dt #matriz con booleanos para llegada
+                
+                #deltax y deltay individual segun distancia restante
+                urdeltax=(uLlegadaR[rR,rC]-1)*(-1)*(np.nan_to_num(xdeltaur[rR,rC]/distanceur[rR,rC]))*dt +uLlegadaR[rR,rC]*(xdeltaur[rR,rC])
+                urdeltay=(uLlegadaR[rR,rC]-1)*(-1)*(np.nan_to_num(ydeltaur[rR,rC]/distanceur[rR,rC]))*dt +uLlegadaR[rR,rC]*(ydeltaur[rR,rC])
+                p[indexU[rC]]=p[indexU[rC]]+np.c_[urdeltax,urdeltay]
+                w[indexU[rC]]=w[indexU[rC]]- 1000*np.sqrt(np.square(urdeltax)+np.square(urdeltay))*PtOptimum/vOptimum
+                if distanceur[rR,rC]<=0.01:
+                    UinR=UinR and True
+                else:
+                    UinR=UinR and False
+
         if video:
             TesisFcns.initialScatter(q,r,p,pZero,div,radOper,C,autom,video) #ploteo de delta
             #Transformar figura a imagen (no pude implementar FuncAnimation)
@@ -269,15 +324,24 @@ for iter in range(6): #Sim hasta:(a) todo P ha llegado, o, (b) Q agotados
             theVideo.write(img)
             theVideo.write(img)
             theVideo.write(img)
-            break
+            if q.shape[0]>p.shape[0]:
+                break
+            elif finalReturn:
+                if UinR:
+                    break
         print("")
-    print("deltax:",deltax,"deltay:",deltay)
+        if qDone.shape[0]==p.shape[0]:
+            break
+
     if not qDone.shape[0]==0:
         allQMet= np.concatenate((allQMet,q[qDone])) #guardado de q alcanzados
         q=np.delete(q,qDone,0) #eliminación de q alcanzados
         qNodes=np.delete(qNodes,qDone,0) #eliminación asociada a q
         RperQ=np.delete(RperQ,qDone,0) #eliminación de R asignados respectivos
-    if q.shape[0]==0:
-        break
-
+    if finalReturn:
+        if UinR:
+            break
+print("initial energy",winit)
+print("remaining energy",w)
+print(UinR)
 print("///////////////////////////----FINISHED----/////////////////////////////")
