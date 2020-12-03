@@ -12,9 +12,9 @@ from matplotlib import animation
 import numpy as np
 import math
 
-def initialScatter (q,r,p,pZero,div,radOper,C,autom,video):
+def initialScatter (q,r,p,pZero,div,radOper,C,autom,video,qMet):
     # Generacion visual de GRID utilizando meshgrid
-    gridNodes=np.array(range(0,int(round(radOper/1000))+1,int(round(radOper/(1000*div)))))
+    gridNodes=np.linspace(0,int(round(radOper/1000))+1,div+1)
     
     ''' CONVERTIR PLOT DE DIVISIONES EN UNA FUNCION'''
     ##--------------------------------------PLOTEO PARA CUADRÍCULAS----------------------------------------##
@@ -23,15 +23,14 @@ def initialScatter (q,r,p,pZero,div,radOper,C,autom,video):
     plt.plot(Xb,Yb,'k--',linewidth=1)
     plt.plot(Yb,Xb,'k--',linewidth=1)
     ##------------------------------------------------------------------------------------------------------##
-
-    for j in range(p.shape[0]):
-        plt.plot([pZero[0,0],p[0,0]],[pZero[0,1],p[0,1]],'b--',linewidth=0.5)
     
     plt.scatter(q[:,0],q[:,1],marker='o',c='None', edgecolor='red',linewidth=0.7,label='Objetivos')
     plt.scatter(p[:,0],p[:,1], marker='x',color='b',linewidth=0.7,label='UAVs')
     plt.scatter(r[:,0],r[:,1], c='None', marker='h',edgecolor='g',linewidth=0.7,label='Recolectores')
+    if not qMet.shape[0]==0:
+        plt.scatter(qMet[:,0],qMet[:,1],marker='o',c='None', edgecolor='gray',linewidth=0.7,label='Q alcanzados')
 
-    plt.plot([pZero[0,0],p[0,0]],[pZero[0,1],p[0,1]],'b--',linewidth=0.5)
+    #plt.plot([pZero[0,0],p[0,0]],[pZero[0,1],p[0,1]],'b--',linewidth=0.5)
     plt.xlabel('x (km)')
     plt.ylabel('y (km)')
     ''' CONDICIONAR TITLE SEGUN PARTICION'''

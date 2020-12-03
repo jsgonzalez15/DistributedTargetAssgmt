@@ -27,7 +27,7 @@ np.seterr(divide='ignore', invalid='ignore')
 
 ''' Parámetros generales de simulación'''
 [densidadMin,densidadMax]=[6,6] #Rango de densidades a simular
-qPerUAV=10 #Proporción de objetivos por UAV
+qPerUAV=18 #Proporción de objetivos por UAV
 w_Densidad=[] #valores medios y desviación estándar por densidad de consumo
 w_Iteracion=[] #valores medios y desviación estándar en consumo por iteración
 desv_w_p=0 #max desv de consumo entre UAVs (ideal 0)
@@ -42,13 +42,15 @@ changeDiv=0 #cambiar div durante sim(1)/ mantener div(0)
 video=True
 
 ''' ############################  Inicialización escenario, UAVs, Puntos Recolección y objetivos  ############################ '''
-nQ=90 #Numero de Objetivos
+nQ=92 #Numero de Objetivos
 nP=round(nQ/qPerUAV) #Numero de UAVs segun densidad deseada
 nR=5 #Numero de Puntos Recolección/despliegue
 
 r=np.random.rand(nR,2)*radOper/1000 #(x,y) posiciones [km] de recolectores en AreaOperaciones
 q=np.random.rand(nQ,2)*radOper/1000 #(x,y) posiciones [km] de objetivos en AreaOperaciones 
 qNodes=np.ones(nQ)*(-1) #(z) nodos en los que se encuentran q
+allQMet=np.array([]) #Objetivos que han sido alcanzados (inicializado con valor dummie)
+
 w=np.ones(nP)*capJoules #Registro de consumo por UAV (Energía restante)
 winit=np.array(w)
 wMin= capJoules*0.05
@@ -57,7 +59,9 @@ p= np.random.rand(nP,2)*radOper/1000   #inicializacion de matriz de UAVs
 for pItem in range(nP): #Ubicaciones iniciales en Recolectores aleatorios 
     p[pItem]=r[int(round(np.random.rand()*nR-0.5))] + (np.random.rand(1,2)-0.5)
 pNodes=np.ones(nP)*(-1) #nodos en los que se encuentra p
-pZero=p
+pReturned=np.zeros((nP,1)) #indicador de retorno a recolector
+pReturning=np.zeros((nP,1)) #p returnando a recolectores
+pZero=np.array(p)
 
 ''' Asignación de puntos de recolección a objetivos'''
 RperQ=np.array(q) #(x,y) posiciones [km] recolector asignado por q
@@ -79,14 +83,13 @@ else:
 C=np.array([range((div-1)*div+1,div*div+1)]) # Matriz de indices para identificar celdas
 for i in range(div-1,0,-1):
     C=np.append(C,[range((i-1)*div+1,div*i+1)],axis=0)
-TesisFcns.initialScatter(q,r,p,pZero,div,radOper,C,autom,video) #ploteo inicial
+TesisFcns.initialScatter(q,r,p,pZero,div,radOper,C,autom,video,allQMet) #ploteo inicial
 ####################################################################################################
 
 if video:
     fourcc=cv2.VideoWriter_fourcc(*'MP4V')
     theVideo=cv2.VideoWriter('TesisSimVideo.mp4',fourcc,10,(640,480))
 
-allQMet=np.array([[-1,-1]]) #Objetivos que han sido alcanzados (inicializado con valor dummie)
 
 '''##################################################################################################################
 ##                                      EJECUCIÓN PRINCIPAL DEL ALGORITMO
@@ -129,10 +132,10 @@ for iter in range(qPerUAV+3): #Sim hasta:(a) todo P ha llegado, o, (b) Q agotado
                 ydeltaqr= np.zeros((pInNode.shape[0],1))+ RperQNode[:,1].reshape(1,qInNode.shape[0]) -qInNode[:,1].reshape(1,qInNode.shape[0])
                 distanceqr= np.sqrt(np.add(np.square(xdeltaqr),np.square(ydeltaqr))).T
 
-                Amatrix=distancepq*PtOptimum/vOptimum +distanceqr*PtOptimum/vOptimum #matriz de pesos
+                Amatrix=1000*distancepq*PtOptimum/vOptimum +1000*distanceqr*PtOptimum/vOptimum #matriz de pesos
                 wNode=w[indexP]
                 asignE=Amatrix<wNode #inicialización de la matriz con arcos que pueden ser recorridos
-                asignE=asignE*(np.zeros((Amatrix.shape))+wMin<wNode)
+                #asignE=asignE*(np.zeros((Amatrix.shape))+wMin<wNode)
 
                 #Matriz de distancias P_i a R
                 xdeltapr= r[:,0].reshape(r.shape[0],1)-pInNode[:,0].reshape(1,pInNode.shape[0])
@@ -142,23 +145,24 @@ for iter in range(qPerUAV+3): #Sim hasta:(a) todo P ha llegado, o, (b) Q agotado
                 #Casos de retorno P a R
                 asignPtoR=np.dot(np.ones((1,asignE.shape[0])),asignE)==0
                 asignPtoR=asignPtoR.reshape(asignPtoR.shape[1],1)
+                if not np.sum(asignPtoR)==0:
+                    pReturning[np.array(indexP)[np.where(asignPtoR==1)[0]]]=1
 
                 for rC in range(asignE.shape[1]): #Possible return Column
                     if asignPtoR[rC]:
                         rR= np.where(distancepr[:,rC]==np.min(distancepr[:,rC]))[0] #return Row (distancia a r más cercano)
                         pLlegadaR=distancepr<=dt #matriz con booleanos para llegada
-                        print("p antes de:",p[indexP[rC]], "w antes de:", w[indexP[rC]])
                         #deltax y deltay individual segun distancia restante
                         prdeltax=(pLlegadaR[rR,rC]-1)*(-1)*(np.nan_to_num(xdeltapr[rR,rC]/distancepr[rR,rC]))*dt +pLlegadaR[rR,rC]*(xdeltapr[rR,rC])
                         prdeltay=(pLlegadaR[rR,rC]-1)*(-1)*(np.nan_to_num(ydeltapr[rR,rC]/distancepr[rR,rC]))*dt +pLlegadaR[rR,rC]*(ydeltapr[rR,rC])
                         pInNode[rC]=pInNode[rC]+np.c_[prdeltax,prdeltay]
                         p[indexP[rC]]=pInNode[rC] #actualizacion en posicion global
                         w[indexP[rC]]=w[indexP[rC]]- 1000*np.sqrt(np.square(prdeltax)+np.square(prdeltay))*PtOptimum/vOptimum
-                        print("p despues de:",p[indexP[rC]],"w antes de:", w[indexP[rC]])
-                        print("rR: ",rR, "rC:", rC, "prdeltax:",prdeltax,"prdeltay:",prdeltay)
+                        if distancepr[rR,rC]<=0.01:
+                            pReturned[indexP[rC]]=1 #Retorno a Recolector
 
                 asigned=np.zeros((qInNode.shape[0],pInNode.shape[0])) #matriz con p asignados
-                Amatrix= Amatrix-distanceqr*PtOptimum/vOptimum #Actualizacion a pesos por recorrido individual
+                Amatrix= Amatrix-1000*distanceqr*PtOptimum/vOptimum #Actualizacion a pesos por recorrido individual
                 
                 #eliminacion de arcos no eficientes
                 for row in range(Amatrix.shape[0]):
@@ -211,7 +215,7 @@ for iter in range(qPerUAV+3): #Sim hasta:(a) todo P ha llegado, o, (b) Q agotado
                 
             indexU=np.concatenate((indexU,np.array(indexUinNode)))
         print("Size de no asignados acumulado: ", indexU.shape)
-        
+        print("Size de objetivos alcanzados: ", qDone.shape)
         ######################################################################################################
         ##                      Asignación y Movimiento Internodal
         ######################################################################################################
@@ -242,14 +246,18 @@ for iter in range(qPerUAV+3): #Sim hasta:(a) todo P ha llegado, o, (b) Q agotado
             #Matriz de diferencia de nodos (U_i no se asigna a su N_i)
             nodeQnodeU=qNodesleft[:].reshape(qNodesleft.shape[0],1)-uNodes[:].reshape(1,uNodes.shape[0])
             nodeQnodeU=((nodeQnodeU.astype(int)==0)-1)*(-1)
-            Amatrix=distanceuq*PtOptimum/vOptimum +distanceqRperQ*PtOptimum/vOptimum #matriz de pesos
+            Amatrix=1000*distanceuq*PtOptimum/vOptimum +1000*distanceqRperQ*PtOptimum/vOptimum #matriz de pesos
 
             wU=w[indexU]
             asignE=Amatrix<wU #inicialización de la matriz con arcos que pueden ser recorridos
             asignE=np.multiply(asignE,nodeQnodeU)
+            #asignE=asignE*(np.zeros((Amatrix.shape))+wMin<wU)
+            asignUtoR=np.dot(np.ones((1,asignE.shape[0])),asignE)==0
+            asignUtoR=asignUtoR.reshape(asignUtoR.shape[1],1)
+            pReturning[indexU[np.where(asignUtoR)[0]]]=1
 
             asigned=np.zeros((qleft.shape[0],u.shape[0])) #matriz con p asignados
-            Amatrix= Amatrix- distanceqRperQ*PtOptimum/vOptimum #Actualizacion a pesos por recorrido individual
+            Amatrix= Amatrix- 1000*distanceqRperQ*PtOptimum/vOptimum #Actualizacion a pesos por recorrido individual
             
             #eliminacion de arcos no eficientes
             for row in range(Amatrix.shape[0]):
@@ -285,8 +293,10 @@ for iter in range(qPerUAV+3): #Sim hasta:(a) todo P ha llegado, o, (b) Q agotado
         ######################################################################################################
         ##                      Retorno de U a R
         ######################################################################################################
-        if q.shape[0]<p.shape[0]:
-            returnU=p[indexU]
+        if not np.sum(pReturning)==0:
+            indexU=np.where(pReturning==1)[0]
+            returnU=np.array(p[indexU])
+            
             #Matriz de distancias U_i a R
             xdeltaur= r[:,0].reshape(r.shape[0],1)-returnU[:,0].reshape(1,returnU.shape[0])
             ydeltaur= r[:,1].reshape(r.shape[0],1)-returnU[:,1].reshape(1,returnU.shape[0])
@@ -304,19 +314,27 @@ for iter in range(qPerUAV+3): #Sim hasta:(a) todo P ha llegado, o, (b) Q agotado
                 p[indexU[rC]]=p[indexU[rC]]+np.c_[urdeltax,urdeltay]
                 w[indexU[rC]]=w[indexU[rC]]- 1000*np.sqrt(np.square(urdeltax)+np.square(urdeltay))*PtOptimum/vOptimum
                 if distanceur[rR,rC]<=0.01:
+                    pReturned[indexU[rC]]=1
                     UinR=UinR and True
                 else:
                     UinR=UinR and False
-
+        
+        ######################################################################################################
+        ##                      Estado de ejecución, video y salto a siguiente iteración
+        ######################################################################################################
         if video:
-            TesisFcns.initialScatter(q,r,p,pZero,div,radOper,C,autom,video) #ploteo de delta
+            TesisFcns.initialScatter(q,r,p,pZero,div,radOper,C,autom,video,allQMet) #ploteo de delta
             #Transformar figura a imagen (no pude implementar FuncAnimation)
             img= np.frombuffer(plt.gcf().canvas.tostring_rgb(), dtype=np.uint8)
             img= img.reshape(plt.gcf().canvas.get_width_height()[::-1] + (3,))
             img = cv2.cvtColor(img,cv2.COLOR_RGB2BGR) #imagen lista para ser agregada a video
             theVideo.write(img)
-            
-        if nodesMet and indexU.shape[0]==0: #todo q fue alcanzado para los p disponibles y no hay u
+
+        if (not np.sum(pReturned) ==0) and np.sum(pReturned)+qDone.shape[0]==p.shape[0]:
+            print("salto llegada y retorno para actualizar Q")
+            break    
+
+        if (nodesMet and indexU.shape[0]==0) and video: #todo q fue alcanzado para los p disponibles y no hay u
             #Transformar figura a imagen (no pude implementar FuncAnimation)
             img= np.frombuffer(plt.gcf().canvas.tostring_rgb(), dtype=np.uint8)
             img= img.reshape(plt.gcf().canvas.get_width_height()[::-1] + (3,))
@@ -326,22 +344,31 @@ for iter in range(qPerUAV+3): #Sim hasta:(a) todo P ha llegado, o, (b) Q agotado
             theVideo.write(img)
             if q.shape[0]>p.shape[0]:
                 break
-            elif finalReturn:
-                if UinR:
-                    break
         print("")
         if qDone.shape[0]==p.shape[0]:
             break
 
     if not qDone.shape[0]==0:
-        allQMet= np.concatenate((allQMet,q[qDone])) #guardado de q alcanzados
+        if allQMet.shape[0]==0:
+            allQMet=np.array(q[qDone])
+        else:
+            allQMet= np.concatenate((allQMet,q[qDone])) #guardado de q alcanzados
         q=np.delete(q,qDone,0) #eliminación de q alcanzados
         qNodes=np.delete(qNodes,qDone,0) #eliminación asociada a q
         RperQ=np.delete(RperQ,qDone,0) #eliminación de R asignados respectivos
-    if finalReturn:
-        if UinR:
-            break
+        print("Q actualizado")
+
+    if np.sum(pReturned)==p.shape[0]:
+        img= np.frombuffer(plt.gcf().canvas.tostring_rgb(), dtype=np.uint8)
+        img= img.reshape(plt.gcf().canvas.get_width_height()[::-1] + (3,))
+        img = cv2.cvtColor(img,cv2.COLOR_RGB2BGR) #imagen lista para ser agregada a video
+        print("Todo P ha regresado")
+        theVideo.write(img)
+        theVideo.write(img)
+        theVideo.write(img)
+        break
 print("initial energy",winit)
 print("remaining energy",w)
-print(UinR)
+print("returned:",pReturned, "Bool statement:",np.sum(pReturned)==p.shape[0], "returning:",pReturning)
+print("qShape:", q.shape[0])
 print("///////////////////////////----FINISHED----/////////////////////////////")
