@@ -18,6 +18,7 @@ import numpy as np
 import cv2
 import time
 import json
+from playsound import playsound
 #####################################################################################################################
 ##                               Simulación de Método Distribuido: Min Costo UAV/Destino
 #####################################################################################################################
@@ -27,28 +28,31 @@ np.seterr(divide='ignore', invalid='ignore')
 [radOper,PtOptimum,vOptimum,capJoules]=GRIDFcns.CalcularParametrosEnergeticos()
 
 ''' Parámetros generales de simulación'''
-qPerUAV=18 #Proporción de objetivos por UAV
+qPerUAV=7 #Proporción de objetivos por UAV
 desv_w_p=0 #max desv de consumo entre UAVs (ideal 0)
 simPorDensidad=100 #n sim por densidad
 divMethod="GRID" #tipo de particion del espacio
 dt=0.3
 
 w_Densidad=np.array([]) #valores medios y desviación estándar por densidad de consumo
-w_Div=np.zeros((qPerUAV+2,4))
+w_Div=np.zeros((int(2.1*qPerUAV),4)) #valores promedio de consumo por UAV por división para 4 divisiones
+w_DivTotal=np.zeros((int(2.1*qPerUAV),4)) #valores totales de consumo por flota por división para 4 divisiones
 q_Div=np.zeros((1,4))
-w_DivStandar=np.zeros((qPerUAV+2,4))
+w_DivStandar=np.zeros((int(2.1*qPerUAV),4))
+w_DivTotalStandar=np.zeros((int(2.1*qPerUAV),4))
 q_DivStandar=np.zeros((1,4))
 
-video=0 #obtener un video de simulación (1) ejecutar sin video (0)
+video=False #obtener un video de simulación (1) ejecutar sin video (0)
 autom=1 #autom sim(1)/ver todo(0)
 changeDiv=0 #cambiar div durante sim(1)/ mantener div(0)
-video=False
+
 
 ######################################################################################################
 ##                      Repeticiones para obtener efecto de número de divisiones
 ######################################################################################################
 for divIniciales in range(1,5):
-    w_Sim=np.zeros((qPerUAV+2,simPorDensidad)) #valores medios y desviación estándar en consumo por iteración
+    w_Sim=np.zeros((int(2.1*qPerUAV),simPorDensidad)) #valores medios y desviación estándar en consumo por iteración
+    w_SimTotal=np.zeros((int(2.1*qPerUAV),simPorDensidad)) #valores de simulación total de la flota
     q_Sim=np.zeros((1,simPorDensidad))
 
     ######################################################################################################
@@ -67,7 +71,8 @@ for divIniciales in range(1,5):
 
         w=np.ones(nP)*capJoules #Registro de consumo por UAV (Energía restante)
         winit=np.array(w)
-        wIter=np.ones(qPerUAV+2)
+        wIter=np.ones(int(2.1*qPerUAV))
+        wIterTotal=np.ones(int(2.1*qPerUAV))
 
         p= np.random.rand(nP,2)*radOper/1000   #inicializacion de matriz de UAVs
         for pItem in range(nP): #Ubicaciones iniciales en Recolectores aleatorios 
@@ -108,7 +113,7 @@ for divIniciales in range(1,5):
         '''##################################################################################################################
         ##                                      EJECUCIÓN PRINCIPAL DEL ALGORITMO
         #####################################################################################################################'''
-        for iter in range(qPerUAV+2): #Sim hasta:(a) todo P ha llegado, o, (b) Q agotados
+        for iter in range(int(2.1*qPerUAV)): #Sim hasta:(a) todo P ha llegado, o, (b) Q agotados
 
             for deltaT in range(150):
                 print("// Div iniciales: ", divIniciales,"// Simulación actual: ",simActual,"// Iteración simulada: ", iter," /// Delta T simulado: ", deltaT)
@@ -127,8 +132,7 @@ for divIniciales in range(1,5):
                     if not np.array(indexP).shape[0]==0:
                         pNodes[np.array(indexP).astype(int)]=nodoActual #nodos de Q
                     indexUinNode=np.array([]) #indices de U dentro del nodo
-                    
-                    print("Nodo: ",nodoActual,", pInNode: ", pInNode.shape, ", qInNode: ", qInNode.shape)
+
                     if (not pInNode.shape[0]==0) and (qInNode.shape[0]==0): #solo hay U (no hay Q) en Nodo actual
                         indexUinNode=np.array(indexP)
 
@@ -158,53 +162,69 @@ for divIniciales in range(1,5):
 
                         #Casos de retorno P a R
                         asignPtoR=np.dot(np.ones((1,asignE.shape[0])),asignE)==0
+                        #Ignorar casos de retorno actual
+                        if not np.sum(pReturning[indexP])==0:
+                            asignE[:,np.where(pReturning[indexP]==1)[0]]=False
                         asignPtoR=asignPtoR.reshape(asignPtoR.shape[1],1)
                         if not np.sum(asignPtoR)==0:
                             pReturning[np.array(indexP)[np.where(asignPtoR==1)[0]]]=1
 
                         for rC in range(asignE.shape[1]): #Possible return Column
                             if asignPtoR[rC]:
-                                rR= np.where(distancepr[:,rC]==np.min(distancepr[:,rC]))[0] #return Row (distancia a r más cercano)
-                                pLlegadaR=distancepr<=dt #matriz con booleanos para llegada
+                                rR= np.array(np.where(distancepr[:,rC]==np.min(distancepr[:,rC]))[0])[0] #return Row (distancia a r más cercano)
+                                pLlegadaR=distancepr[rR,rC]<=dt #matriz con booleanos para llegada
                                 #deltax y deltay individual segun distancia restante
-                                prdeltax=(pLlegadaR[rR,rC]-1)*(-1)*(np.nan_to_num(xdeltapr[rR,rC]/distancepr[rR,rC]))*dt +pLlegadaR[rR,rC]*(xdeltapr[rR,rC])
-                                prdeltay=(pLlegadaR[rR,rC]-1)*(-1)*(np.nan_to_num(ydeltapr[rR,rC]/distancepr[rR,rC]))*dt +pLlegadaR[rR,rC]*(ydeltapr[rR,rC])
+                                prdeltax=(pLlegadaR-1)*(-1)*(np.nan_to_num(xdeltapr[rR,rC]/distancepr[rR,rC]))*dt +pLlegadaR*(xdeltapr[rR,rC])
+                                prdeltay=(pLlegadaR-1)*(-1)*(np.nan_to_num(ydeltapr[rR,rC]/distancepr[rR,rC]))*dt +pLlegadaR*(ydeltapr[rR,rC])
                                 pInNode[rC]=pInNode[rC]+np.c_[prdeltax,prdeltay]
                                 p[indexP[rC]]=pInNode[rC] #actualizacion en posicion global
                                 w[indexP[rC]]=w[indexP[rC]]- 1000*np.sqrt(np.square(prdeltax)+np.square(prdeltay))*PtOptimum/vOptimum
-                                if distancepr[rR,rC]<=0.01:
+                                if distancepr[rR,rC]<=dt/2:
                                     pReturned[indexP[rC]]=1 #Retorno a Recolector
-
+                        
                         asigned=np.zeros((qInNode.shape[0],pInNode.shape[0])) #matriz con p asignados
                         Amatrix= Amatrix-1000*distanceqr*PtOptimum/vOptimum #Actualizacion a pesos por recorrido individual
                         
                         #eliminacion de arcos no eficientes
                         for row in range(Amatrix.shape[0]):
-                            infArc=100000.0 #arco con valor infinito (no será considerado para calcular arcos minimos) 
+                            infArc=100*capJoules #arco con valor infinito (no será considerado para calcular arcos minimos) 
                             if row==Amatrix.shape[1]:
                                 break
                             #arcos restantes (sin p asignados, sus arcos y arcos de q respectivos)
                             remainingArcs=Amatrix+(asignE-1)*(-1)*infArc+asigned*infArc
                             #print("remainingArcs: ",remainingArcs)
                             currMin=np.min(remainingArcs) #arco mínimo global por q para todo p
-
+                            if currMin>=infArc:
+                                break
                             #print("arcos minimos", currMin)
                             deleteNonMax=remainingArcs==currMin #matriz booleana actual para eliminar arcos desde q y desde p
                             [rowIndex,colIndex]=np.where(remainingArcs==currMin) #indice de p seleccionado
+                            rowIndex=np.array(rowIndex)[0]
+                            colIndex=np.array(colIndex)[0]
 
-                            asignE[rowIndex,:]=asignE[rowIndex,:]*deleteNonMax[rowIndex,:] #eliminado de arcos no mínimos desde q
-                            asignE[:,colIndex]=asignE[:,colIndex]*deleteNonMax[:,colIndex] #eliminado de arcos no mínimos desde p
+                            asignE[rowIndex,:]=asignE[rowIndex,:]*False #eliminado de arcos no mínimos desde q
+                            asignE[:,colIndex]=asignE[:,colIndex]*False #eliminado de arcos no mínimos desde p
                             asigned[rowIndex,colIndex]=True
                             #print("asignE actual: ",asignE)
 
                         pLlegada=distancepq<=dt #matriz con booleanos para llegada
                         #deltax y deltay matricial segun distancia restante
-                        deltax=(pLlegada-1)*(-1)*(np.nan_to_num(xdeltapq/distancepq))*asignE*dt +pLlegada*(xdeltapq)*asignE
-                        deltay=(pLlegada-1)*(-1)*(np.nan_to_num(ydeltapq/distancepq))*asignE*dt +pLlegada*(ydeltapq)*asignE
+                        deltax=(pLlegada-1)*(-1)*(np.nan_to_num(xdeltapq/distancepq))*asigned*dt +pLlegada*(xdeltapq)*asigned
+                        deltay=(pLlegada-1)*(-1)*(np.nan_to_num(ydeltapq/distancepq))*asigned*dt +pLlegada*(ydeltapq)*asigned 
                         
                         #Movimiento segun asignacion (movimiento unitario o movimiento de llegada)
                         xmove=np.dot(np.ones(asignE.shape[0]),deltax)
                         ymove=np.dot(np.ones(asignE.shape[0]),deltay)
+
+                        if(not (np.all(deltax<=dt) and np.all(deltay<=dt))) or (not (np.all(xmove<=dt) and np.all(ymove<=dt))):
+                            print("/////////////////////////////////////////////////////////////")
+                            print("////////////////////////--ALERTA EN P--//////////////////////")
+                            print("/////////////////////////////////////////////////////////////")
+                            print(not (np.all(deltax<=dt) and np.all(deltay<=dt)))
+                            print(not (np.all(xmove<=dt) and np.all(ymove<=dt)))
+                            print("deltax: ", deltax,"deltay: ", deltay)
+                            time.sleep(10) #alerta al usuario que el algoritmo está fallando
+
                         p[indexP]=pInNode +np.c_[xmove,ymove]
                         w[indexP]=w[indexP]- 1000*np.sqrt(np.add(np.square(xmove),np.square(ymove)))*PtOptimum/vOptimum
 
@@ -223,7 +243,7 @@ for divIniciales in range(1,5):
                             qDone=qDone.astype(int) #se asegura que sean de tipo int
 
                         #Guardado de indices en U y nodos asociados
-                        currU= (np.dot(np.ones(asignE.shape[0]),asignE).astype(int)-1)*(-1) #vector bool con U en Nodo actual
+                        currU= (np.dot(np.ones(asignE.shape[0]),asigned).astype(int)-1)*(-1) #vector bool con U en Nodo actual
                         indexUinNode=np.where(currU==True)[0]
                         indexUinNode=np.array(indexP)[indexUinNode]
                         
@@ -233,7 +253,8 @@ for divIniciales in range(1,5):
                 ######################################################################################################
                 ##                      Asignación y Movimiento Internodal
                 ######################################################################################################
-                if not indexU.shape[0]==0:
+                if not indexU.shape[0]-np.sum(pReturning)==0:
+                    print("/////////////////////////--INTERNODAL--//////////////////////")
                     indexU=indexU.astype(int)
                     u=np.array(p[indexU]) # U en espacio de operaciones
                     uNodes=np.array(pNodes[indexU]) # nodos de U
@@ -268,38 +289,49 @@ for divIniciales in range(1,5):
                     #asignE=asignE*(np.zeros((Amatrix.shape))+wMin<wU)
                     asignUtoR=np.dot(np.ones((1,asignE.shape[0])),asignE)==0
                     asignUtoR=asignUtoR.reshape(asignUtoR.shape[1],1)
-                    pReturning[indexU[np.where(asignUtoR)[0]]]=1
+                    pReturning[indexU[np.where(asignUtoR==True)[0]]]=1
 
                     asigned=np.zeros((qleft.shape[0],u.shape[0])) #matriz con p asignados
                     Amatrix= Amatrix- 1000*distanceqRperQ*PtOptimum/vOptimum #Actualizacion a pesos por recorrido individual
                     
                     #eliminacion de arcos no eficientes
                     for row in range(Amatrix.shape[0]):
-                        infArc=100000.0 #arco con valor infinito (no será considerado para calcular arcos minimos) 
+                        infArc=100*capJoules #arco con valor infinito (no será considerado para calcular arcos mínimos) 
                         if row==Amatrix.shape[1]:
                             break
                         #arcos restantes (sin u asignados, sus arcos y arcos de q respectivos)
                         remainingArcs=Amatrix+(asignE-1)*(-1)*infArc+asigned*infArc
                         #print("remainingArcs: ",remainingArcs)
                         currMin=np.min(remainingArcs) #arco mínimo global por q para todo u
-
+                        if currMin>=infArc:
+                            break
                         #print("arcos minimos", currMin)
                         deleteNonMax=remainingArcs==currMin #matriz booleana actual para eliminar arcos desde q y desde u
                         [rowIndex,colIndex]=np.where(remainingArcs==currMin) #indice de u seleccionado
+                        rowIndex=np.array(rowIndex)[0]
+                        colIndex=np.array(colIndex)[0]
 
-                        asignE[rowIndex,:]=asignE[rowIndex,:]*deleteNonMax[rowIndex,:] #eliminado de arcos no mínimos desde q
-                        asignE[:,colIndex]=asignE[:,colIndex]*deleteNonMax[:,colIndex] #eliminado de arcos no mínimos desde p
+                        asignE[rowIndex,:]=asignE[rowIndex,:]*False #eliminado de arcos no mínimos desde q
+                        asignE[:,colIndex]=asignE[:,colIndex]*False #eliminado de arcos no mínimos desde p
                         asigned[rowIndex,colIndex]=True
                     
                     uLlegada=distanceuq<=dt #matriz con booleanos para llegada
                     #deltax y deltay matricial segun distancia restante
-                    deltax=np.nan_to_num((uLlegada-1)*(-1)*(xdeltauq/distanceuq)*asignE*dt +uLlegada*(xdeltauq)*asignE)
-                    deltay=np.nan_to_num((uLlegada-1)*(-1)*(ydeltauq/distanceuq)*asignE*dt +uLlegada*(ydeltauq)*asignE)
+                    deltax=np.nan_to_num((uLlegada-1)*(-1)*(xdeltauq/distanceuq)*asigned*dt +uLlegada*(xdeltauq)*asigned)
+                    deltay=np.nan_to_num((uLlegada-1)*(-1)*(ydeltauq/distanceuq)*asigned*dt +uLlegada*(ydeltauq)*asigned)
                     #Movimiento segun asignacion (movimiento unitario o movimiento de llegada)
                     xmove=np.dot(np.ones(asignE.shape[0]),deltax)
                     ymove=np.dot(np.ones(asignE.shape[0]),deltay)
                     u=u +np.c_[xmove,ymove]
                     
+                    if(not (np.all(deltax<=dt) and np.all(deltay<=dt))) or (not (np.all(xmove<=dt) and np.all(ymove<=dt))):
+                        print("/////////////////////////////////////////////////////////////")
+                        print("////////////////////////--ALERTA EN U--//////////////////////")
+                        print("/////////////////////////////////////////////////////////////")
+                        print(not (np.all(deltax<=dt) and np.all(deltay<=dt)))
+                        print(not (np.all(xmove<=dt) and np.all(ymove<=dt)))
+                        print("deltax: ", deltax,"deltay: ", deltay)
+                        time.sleep(10) #alerta al usuario que el algoritmo está fallando
                     #Actualizacion en P global
                     p[indexU]=np.array(u)
                     w[indexU]=w[indexU]- 1000*np.sqrt(np.add(np.square(xmove),np.square(ymove)))*PtOptimum/vOptimum
@@ -307,7 +339,8 @@ for divIniciales in range(1,5):
                 ######################################################################################################
                 ##                      Retorno de U a R
                 ######################################################################################################
-                if not np.sum(pReturning)==0:
+                if not np.sum(pReturning)-np.sum(pReturned)==0:
+                    print("/////////////////////////--REGRESOUAR--//////////////////////")
                     indexU=np.where(pReturning==1)[0]
                     returnU=np.array(p[indexU])
                     
@@ -319,7 +352,7 @@ for divIniciales in range(1,5):
                     finalReturn=True
                     UinR=True
                     for rC in range(returnU.shape[0]): #Possible return Column
-                        rR= np.where(distanceur[:,rC]==np.min(distanceur[:,rC]))[0] #return Row (distancia a r más cercano)
+                        rR= np.array(np.where(distanceur[:,rC]==np.min(distanceur[:,rC]))[0])[0] #return Row (distancia a r más cercano)
                         uLlegadaR=distanceur<=dt #matriz con booleanos para llegada
                         
                         #deltax y deltay individual segun distancia restante
@@ -327,7 +360,7 @@ for divIniciales in range(1,5):
                         urdeltay=(uLlegadaR[rR,rC]-1)*(-1)*(np.nan_to_num(ydeltaur[rR,rC]/distanceur[rR,rC]))*dt +uLlegadaR[rR,rC]*(ydeltaur[rR,rC])
                         p[indexU[rC]]=p[indexU[rC]]+np.c_[urdeltax,urdeltay]
                         w[indexU[rC]]=w[indexU[rC]]- 1000*np.sqrt(np.square(urdeltax)+np.square(urdeltay))*PtOptimum/vOptimum
-                        if distanceur[rR,rC]<=0.01:
+                        if distanceur[rR,rC]<=dt/2:
                             pReturned[indexU[rC]]=1
                             UinR=UinR and True
                         else:
@@ -362,7 +395,9 @@ for divIniciales in range(1,5):
                 if qDone.shape[0]==p.shape[0]:
                     break
             
-            wIter[iter]=np.mean(w) #Registro de consumo para iteración actual
+            wIter[iter]=np.mean(w) #Registro de consumo promedio por UAV para iteración actual
+            wIterTotal[iter]=np.sum(w) #Registro de consumo total por UAV para iteración actual
+
             if not qDone.shape[0]==0:
                 if allQMet.shape[0]==0:
                     allQMet=np.array(q[qDone])
@@ -383,20 +418,26 @@ for divIniciales in range(1,5):
                     theVideo.write(img)
                     theVideo.write(img)
                 break
-        w_Sim[:,simActual]=wIter
+        w_Sim[:,simActual]=wIter/3600 #Conversión de Joules a Wh
+        w_SimTotal[:,simActual]=wIterTotal/3600 #Conversión a Wh
         q_Sim[0,simActual]=allQMet.shape[0]
     w_Div[:,divIniciales-1]=np.mean(w_Sim,axis=1)
+    w_DivTotal[:,divIniciales-1]=np.mean(w_SimTotal,axis=1)
     q_Div[:,divIniciales-1]=np.mean(q_Sim,axis=1)
     w_DivStandar[:,divIniciales-1]=np.std(w_Sim,axis=1)
+    w_DivTotalStandar[:,divIniciales-1]=np.std(w_SimTotal,axis=1)
     q_DivStandar[:,divIniciales-1]=np.std(q_Sim,axis=1)
+
 #print("initial energy",winit)
 #print("remaining energy",w)
 #print("returned:",pReturned, "Bool statement:",np.sum(pReturned)==p.shape[0], "returning:",pReturning)
 #print("qShape:", q.shape[0])
 
 dataForJson={}
-dataForJson["data"]=w_Div.tolist()
-dataForJson["desv"]=w_DivStandar.tolist()
+dataForJson["dataP"]=w_Div.tolist()
+dataForJson["dataPTotal"]=w_DivTotal.tolist()
+dataForJson["desvP"]=w_DivStandar.tolist()
+dataForJson["desvPTotal"]=w_DivTotalStandar.tolist()
 dataForJson["qData"]=q_Div.tolist()
 dataForJson["qDesv"]=q_DivStandar.tolist()
 dataForJson["info"]="Resultado promedio con desviación estándar para simulaciones de múltiples particiones de AO."
@@ -404,4 +445,12 @@ dataForJson["nQ"]=str(nQ)
 dataForJson["qPerUAV"]=str(qPerUAV)
 fileToWrite= open("dataStored.json","w",encoding="utf-8")
 json.dump(dataForJson,fileToWrite,ensure_ascii=False)
+
+print("q:")
+print(q.shape)
+print("allQMet:")
+print(allQMet.shape)
+print("w:")
+print(w)
+playsound("DKCsound.mp3") #alerta al usuario que el código ha terminado
 print("///////////////////////////----FINISHED----/////////////////////////////")

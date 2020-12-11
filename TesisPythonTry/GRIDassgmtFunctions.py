@@ -57,14 +57,14 @@ def initialScatter (places,initialUAVs,initialUAVsZero,div,radOper,C,autom,video
     
     [Xb,Yb]=np.meshgrid(gridNodes,gridNodes) 
     plt.cla() #Se borra información anterior al ploteo actual
-    plt.scatter(places[:,0],places[:,1],marker='o',c='None', edgecolor='red',lineWidth=0.7,label='Objetivos')
-    plt.scatter(initialUAVs[:,0],initialUAVs[:,1], marker='x',color='b',lineWidth=0.7,label='UAVs')
+    plt.scatter(places[:,0],places[:,1],marker='o',c='None', edgecolor='red',linewidth=0.7,label='Objetivos')
+    plt.scatter(initialUAVs[:,0],initialUAVs[:,1], marker='x',color='b',linewidth=0.7,label='UAVs')
     for j in range(initialUAVs.shape[0]):
-        plt.plot([initialUAVsZero[0,0],initialUAVs[0,0]],[initialUAVsZero[0,1],initialUAVs[0,1]],'b--',lineWidth=0.5)
+        plt.plot([initialUAVsZero[0,0],initialUAVs[0,0]],[initialUAVsZero[0,1],initialUAVs[0,1]],'b--',linewidth=0.5)
     
-    plt.plot([initialUAVsZero[0,0],initialUAVs[0,0]],[initialUAVsZero[0,1],initialUAVs[0,1]],'b--',lineWidth=0.5)
-    plt.plot(Xb,Yb,'k--',lineWidth=1)
-    plt.plot(Yb,Xb,'k--',lineWidth=1)
+    plt.plot([initialUAVsZero[0,0],initialUAVs[0,0]],[initialUAVsZero[0,1],initialUAVs[0,1]],'b--',linewidth=0.5)
+    plt.plot(Xb,Yb,'k--',linewidth=1)
+    plt.plot(Yb,Xb,'k--',linewidth=1)
     plt.xlabel('x (km)')
     plt.ylabel('y (km)')
     plt.title('Evolución de envios distribuidos')
