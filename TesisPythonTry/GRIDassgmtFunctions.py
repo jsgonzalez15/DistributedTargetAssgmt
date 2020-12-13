@@ -107,7 +107,8 @@ def CalcularParametrosEnergeticos()->list:
     [vOptimum,vOptimum2]=[((2*w**2)/(Cd*A*(b*Dmax)**2))**0.25,((2*w**2)/(Cd*A*(b*Dmin)**2))**0.25]
     #Consumo optimo
     [PtOptimum,PtOptimum2]=[0.5*Cd*A*Dmax*(vOptimum**3)+(w**2)/(Dmax*vOptimum*b**2),0.5*Cd*A*Dmin*(vOptimum2**3)+(w**2)/(Dmin*vOptimum2*b**2)]
-    
+    PtOptimum=PtOptimum/0.8 #eficiencia de motores UAV
+
     capBattery=266 #Cap. bateria [Wh]
     timeHovering=11*60 #duracion vuelo estatico (21kg)
     capJoules=capBattery*3600 #cap. estimada [J]
@@ -118,5 +119,5 @@ def CalcularParametrosEnergeticos()->list:
     maxDistanceOpt2=(capJoules/PtOptimum2)*vOptimum2# Distancia velocidad optima 2
     # Radio de operaciones en m para densidades
     radOper=maxDistanceOpt*0.95/2
-    radOper2=maxDistanceOpt2*0.95/2#
+    radOper2=maxDistanceOpt2*0.95/2
     return [radOper,PtOptimum,vOptimum,capJoules]

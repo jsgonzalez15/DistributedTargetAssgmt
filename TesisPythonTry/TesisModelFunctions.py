@@ -14,7 +14,7 @@ import math
 
 def initialScatter (q,r,p,pZero,div,radOper,C,autom,video,qMet):
     # Generacion visual de GRID utilizando meshgrid
-    gridNodes=np.linspace(0,int(round(radOper/1000))+1,div+1)
+    gridNodes=np.linspace(0,radOper/1000,div+1)
     
     ''' CONVERTIR PLOT DE DIVISIONES EN UNA FUNCION'''
     ##--------------------------------------PLOTEO PARA CUADRÍCULAS----------------------------------------##

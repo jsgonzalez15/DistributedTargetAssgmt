@@ -18,7 +18,7 @@ Amatrix=np.random.rand(10,6)*100
 asignE= Amatrix<200
 asigned=np.zeros((Amatrix.shape[0],Amatrix.shape[1]))
 asignPtoR=np.dot(np.ones((1,asignE.shape[0])),asignE)==0
-
+'''
 print("asignE: ",asignE)
 for row in range(Amatrix.shape[0]):
     infArc=100000.0 #arco con valor infinito (no será considerado para calcular arcos minimos) 
@@ -43,4 +43,9 @@ for row in range(Amatrix.shape[0]):
     print("asigned: ")
     print(asigned)
 print("Amatrix:")
-print(Amatrix)
+print(Amatrix)'''
+
+ey=np.array([[7,8,9,4,5,6,1,2,3]])
+currentLine=np.where(ey==6)
+print(len(range(4)))
+
