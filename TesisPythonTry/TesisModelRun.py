@@ -45,8 +45,8 @@ w_DivTotalStandar=np.zeros((int(2.1*qPerUAV),len(theRange)))
 q_DivStandar=np.zeros((1,len(theRange)))
 
 video=False #obtener un video de simulación (True) ejecutar sin video (False)
-simGRID=True #simular asignación y traslado GRID target Assgmt (True)
-pureGRID=True #simular algoritmo GRID target Assgmt (True)
+simGRID=False #simular asignación y traslado GRID target Assgmt (True)
+pureGRID=False #simular algoritmo GRID target Assgmt (True)
 autom=1 #autom sim(1)/ver todo(0)
 changeDiv=0 #cambiar div durante sim(1)/ mantener div(0)
 
@@ -59,7 +59,7 @@ for divIniciales in theRange:
     ######################################################################################################
     ##                      Repeticiones para obtener efecto de número de divisiones
     ######################################################################################################
-    for divIniciales2 in range(1):#1,5):
+    for divIniciales2 in range(3,4):#1,5):
         w_Sim=np.zeros((int(2.1*qPerUAV),simPorDensidad)) #valores medios y desviación estándar en consumo por iteración
         w_SimTotal=np.zeros((int(2.1*qPerUAV),simPorDensidad)) #valores de simulación total de la flota
         q_Sim=np.zeros((1,simPorDensidad))
