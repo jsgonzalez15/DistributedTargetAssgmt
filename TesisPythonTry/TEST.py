@@ -49,3 +49,12 @@ ey=np.array([[7,8,9,4,5,6,1,2,3]])
 currentLine=np.where(ey==6)
 print(len(range(4)))
 
+kpiFleet=np.array([33.683540299170986,30.30852352550388, 28.44059206353354, 29.864682358704176])
+print("fleet",np.mean(kpiFleet), np.std(kpiFleet))
+kpiDiv=np.array([27.321822666448412, 30.645665006211054, 30.938761468283566, 30.31597776423304])
+print("div",np.mean(kpiDiv), np.std(kpiDiv))
+
+GRIDkpiFleet=np.array([40.67266478917134, 38.09069102438195, 35.64525498029396, 37.809084534931436])
+print("fleetGRID",np.mean(GRIDkpiFleet), np.std(GRIDkpiFleet))
+GRIDkpiDiv=np.array([27.297148625465045, 32.88229813232855, 36.68073664169082, 38.5140722451969])
+print("divGRID",np.mean(GRIDkpiDiv), np.std(GRIDkpiDiv))

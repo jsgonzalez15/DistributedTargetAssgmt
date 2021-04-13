@@ -18,34 +18,32 @@ import numpy as np
 import cv2
 import time
 import json
-from playsound import playsound
+import pyglet
 #####################################################################################################################
 ##                               Simulación de Método Distribuido: Min Costo UAV/Destino
 #####################################################################################################################
-
 np.seterr(divide='ignore', invalid='ignore')
 #calculo de radio de Operaciones, consumo y vel óptimos
 [radOper,PtOptimum,vOptimum,capJoules]=GRIDFcns.CalcularParametrosEnergeticos()
-
 ''' Parámetros generales de simulación'''
 qPerUAV=6 #Proporción de objetivos por UAV
 desv_w_p=0 #max desv de consumo entre UAVs (ideal 0)
-simPorDensidad=100 #n sim por densidad
-divMethod="GRID" #tipo de particion del espacio
+simPorDensidad=250 #n sim por densidad
+divMethod="GRID" #tipo de particion del espacio (GRID,)
 dt=0.3
 
-theRange=range(1,7)#1,5)
+theRange=range(1,5)#1,2)
 
 w_Densidad=np.array([]) #valores medios y desviación estándar por densidad de consumo
 w_Div=np.zeros((int(2.1*qPerUAV),len(theRange))) #valores promedio de consumo por UAV por división para 4 divisiones
 w_DivTotal=np.zeros((int(2.1*qPerUAV),len(theRange))) #valores totales de consumo por flota por división para 4 divisiones
-q_Div=np.zeros((1,len(theRange)))
+q_Div=np.zeros((int(2.1*qPerUAV),len(theRange)))
 w_DivStandar=np.zeros((int(2.1*qPerUAV),len(theRange)))
 w_DivTotalStandar=np.zeros((int(2.1*qPerUAV),len(theRange)))
-q_DivStandar=np.zeros((1,len(theRange)))
+q_DivStandar=np.zeros((int(2.1*qPerUAV),len(theRange)))
 
-video=False #obtener un video de simulación (True) ejecutar sin video (False)
-simGRID=False #simular asignación y traslado GRID target Assgmt (True)
+video=False  #obtener un video de simulación (True) ejecutar sin video (False)
+simGRID=True #simular asignación y traslado GRID target Assgmt (True)
 pureGRID=False #simular algoritmo GRID target Assgmt (True)
 autom=1 #autom sim(1)/ver todo(0)
 changeDiv=0 #cambiar div durante sim(1)/ mantener div(0)
@@ -59,17 +57,17 @@ for divIniciales in theRange:
     ######################################################################################################
     ##                      Repeticiones para obtener efecto de número de divisiones
     ######################################################################################################
-    for divIniciales2 in range(3,4):#1,5):
+    for divIniciales2 in range(3,4):
         w_Sim=np.zeros((int(2.1*qPerUAV),simPorDensidad)) #valores medios y desviación estándar en consumo por iteración
         w_SimTotal=np.zeros((int(2.1*qPerUAV),simPorDensidad)) #valores de simulación total de la flota
-        q_Sim=np.zeros((1,simPorDensidad))
+        q_Sim=np.zeros((int(2.1*qPerUAV),simPorDensidad))
 
         ######################################################################################################
         ##                      Simulaciones para obtener caso promedio y desviación estándar
         ######################################################################################################
         for simActual in range(simPorDensidad):
             ''' ############################  Inicialización escenario, UAVs, Puntos Recolección y objetivos  ############################ '''
-            nQ=30+15*divIniciales #Numero de Objetivos
+            nQ=30+15*divIniciales2 #Numero de Objetivos
             nP=round(nQ/qPerUAV) #Numero de UAVs segun densidad deseada
             nR=5 #Numero de Puntos Recolección/despliegue
 
@@ -79,11 +77,10 @@ for divIniciales in theRange:
             allQMet=np.array([]) #Objetivos que han sido alcanzados (inicializado con valor dummie)
 
             w=np.ones(nP)*capJoules #Registro de consumo por UAV (Energía restante)
-            if pureGRID:
-                w=w*100
             winit=np.array(w)
             wIter=np.ones(int(2.1*qPerUAV))
             wIterTotal=np.ones(int(2.1*qPerUAV))
+            allQMetIter=np.ones(int(2.1*qPerUAV))
 
             p= np.random.rand(nP,2)*radOper/1000   #inicializacion de matriz de UAVs
             if not pureGRID:
@@ -108,7 +105,7 @@ for divIniciales in theRange:
                 
             ################################ division de espacio en cuadrículas ################################
             if autom:
-                div=divIniciales2 #div default
+                div=divIniciales #div default
             else:
                 div=input('Ingrese el numero de divisiones') #base y altura de la malla (div personalizado)
 
@@ -130,6 +127,7 @@ for divIniciales in theRange:
             #####################################################################################################################'''
             for iter in range(int(2.1*qPerUAV)): #Sim hasta:(a) todo P ha llegado, o, (b) Q agotados
 
+                wPrev=np.array(w) #registro de anterior energía almacenada
                 for deltaT in range(150):
                     print("// Div iniciales: ", divIniciales,"// Simulación actual: ",simActual,"// Iteración simulada: ", iter," /// Delta T simulado: ", deltaT)
                     qDone=np.array([]) #lista de indices de objetivos alcanzados para eliminación en ciclo final
@@ -454,11 +452,9 @@ for divIniciales in theRange:
                         break
                     if pureGRID and q.shape[0]==0:
                         break
-                
-                wIter[iter]=np.mean(w) #Registro de consumo promedio por UAV para iteración actual
-                wIterTotal[iter]=np.sum(w) #Registro de consumo total por UAV para iteración actual
 
                 if not qDone.shape[0]==0:
+                    wIter[iter]=(np.sum(wPrev)-np.sum(w))/qDone.shape[0] #Registro de consumo promedio por UAV para iteración actual
                     if allQMet.shape[0]==0:
                         allQMet=np.array(q[qDone])
                     else:
@@ -467,6 +463,9 @@ for divIniciales in theRange:
                     qNodes=np.delete(qNodes,qDone,0) #eliminación asociada a q
                     RperQ=np.delete(RperQ,qDone,0) #eliminación de R asignados respectivos
                     print("Q actualizado")
+                
+                wIterTotal[iter]=(np.sum(winit)-np.sum(w))/allQMet.shape[0] #Registro de consumo total por UAV para iteración actual
+                allQMetIter[iter]=allQMet.shape[0] #Registro acumulativo de objetivos alcanzados
 
                 if np.sum(pReturned)==p.shape[0]:
                     img= np.frombuffer(plt.gcf().canvas.tostring_rgb(), dtype=np.uint8)
@@ -483,9 +482,11 @@ for divIniciales in theRange:
 
             w_Sim[:,simActual]=wIter/3600 #Conversión de Joules a Wh
             w_SimTotal[:,simActual]=wIterTotal/3600 #Conversión a Wh
-            q_Sim[0,simActual]=allQMet.shape[0]
+            q_Sim[:,simActual]=allQMetIter
         w_Div[:,divIniciales-1]=np.mean(w_Sim,axis=1)
+        print(w_SimTotal.shape)
         w_DivTotal[:,divIniciales-1]=np.mean(w_SimTotal,axis=1)
+        print(q_Sim.shape)
         q_Div[:,divIniciales-1]=np.mean(q_Sim,axis=1)
         w_DivStandar[:,divIniciales-1]=np.std(w_Sim,axis=1)
         w_DivTotalStandar[:,divIniciales-1]=np.std(w_SimTotal,axis=1)
@@ -495,7 +496,7 @@ for divIniciales in theRange:
 #print("remaining energy",w)
 #print("returned:",pReturned, "Bool statement:",np.sum(pReturned)==p.shape[0], "returning:",pReturning)
 #print("qShape:", q.shape[0])
-dataForJson={}
+dataForJson={} #Data a ser guardada en formato json
 dataForJson["dataP"]=w_Div.tolist()
 dataForJson["dataPTotal"]=w_DivTotal.tolist()
 dataForJson["desvP"]=w_DivStandar.tolist()
@@ -516,7 +517,8 @@ print("w:")
 print(w)
 print("C:")
 print(C)
-playsound("DKCsound.mp3") #alerta al usuario que el código ha terminado
 
-
+music = pyglet.resource.media('sound.mp3')
+music.play()
+time.sleep(8)
 print("///////////////////////////----FINISHED----/////////////////////////////")
