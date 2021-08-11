@@ -10,6 +10,8 @@ import json
 print(radOper)
 print(PtOptimum)
 print(vOptimum)
+print(capJoules/3600)
+
 
 w=np.ones(10)
 wIter=np.c_[w,w*2,w,w]
@@ -43,7 +45,7 @@ for row in range(Amatrix.shape[0]):
     print("asigned: ")
     print(asigned)
 print("Amatrix:")
-print(Amatrix)'''
+print(Amatrix)
 
 ey=np.array([[7,8,9,4,5,6,1,2,3]])
 currentLine=np.where(ey==6)
@@ -58,3 +60,30 @@ GRIDkpiFleet=np.array([40.67266478917134, 38.09069102438195, 35.64525498029396, 
 print("fleetGRID",np.mean(GRIDkpiFleet), np.std(GRIDkpiFleet))
 GRIDkpiDiv=np.array([27.297148625465045, 32.88229813232855, 36.68073664169082, 38.5140722451969])
 print("divGRID",np.mean(GRIDkpiDiv), np.std(GRIDkpiDiv))
+
+ABC=np.array([[1,2],[4,12],[5,1],[1,0]])
+abcmax=np.arange(4)
+comparison=np.where(ABC==abcmax)
+print("heeeelp me")'''
+
+vmin=0
+vmax=5
+rpm=np.linspace(1000,10000,10000)
+v1=5
+v2=5
+T1 = ((v1 - vmin) / (vmax - vmin))*5 #* (tmax1 - tmin1)
+T2 = ((v2 - vmin) / (vmax - vmin))*4.3 #* (tmax2 - tmin2)
+print('T2:', T2)
+TretardoAltas = 0.052 * rpm
+TretardoBajas = -0.4526 * rpm + 3621
+print(3621/0.4526)
+
+##-----------------suma de funciones lineales escaladas para Tretardo
+Tretardo = T1 * TretardoAltas/1000 + T2 * TretardoBajas/1000
+Tretardo=Tretardo*1000
+plt.plot(rpm,TretardoAltas,label="T_high")
+plt.plot(rpm,TretardoBajas,label="T_low")
+plt.plot(rpm,Tretardo,label="T")
+plt.legend()
+plt.grid()
+plt.show()

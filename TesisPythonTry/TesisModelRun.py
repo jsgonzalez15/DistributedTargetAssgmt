@@ -31,20 +31,25 @@ desv_w_p=0 #max desv de consumo entre UAVs (ideal 0)
 simPorDensidad=250 #n sim por densidad
 divMethod="GRID" #tipo de particion del espacio (GRID,)
 dt=0.3
+wmin=capJoules*0.05 #energía mínima restante
 
 theRange=range(1,5)#1,2)
 
 w_Densidad=np.array([]) #valores medios y desviación estándar por densidad de consumo
-w_Div=np.zeros((int(2.1*qPerUAV),len(theRange))) #valores promedio de consumo por UAV por división para 4 divisiones
-w_DivTotal=np.zeros((int(2.1*qPerUAV),len(theRange))) #valores totales de consumo por flota por división para 4 divisiones
+w_DivMin=np.zeros((int(2.1*qPerUAV),len(theRange))) #valores promedio de consumo mínimo por UAV por división para 4 divisiones
+w_DivKpi=np.zeros((int(2.1*qPerUAV),len(theRange))) #valores promedio de consumo por UAV por división para 4 divisiones
+w_DivKpiTotal=np.zeros((int(2.1*qPerUAV),len(theRange))) #valores totales de consumo por flota por división para 4 divisiones
 q_Div=np.zeros((int(2.1*qPerUAV),len(theRange)))
 w_DivStandar=np.zeros((int(2.1*qPerUAV),len(theRange)))
-w_DivTotalStandar=np.zeros((int(2.1*qPerUAV),len(theRange)))
+w_DivKpiStandar=np.zeros((int(2.1*qPerUAV),len(theRange)))
+w_DivKpiTotalStandar=np.zeros((int(2.1*qPerUAV),len(theRange)))
 q_DivStandar=np.zeros((int(2.1*qPerUAV),len(theRange)))
 
 video=False  #obtener un video de simulación (True) ejecutar sin video (False)
 simGRID=True #simular asignación y traslado GRID target Assgmt (True)
 pureGRID=False #simular algoritmo GRID target Assgmt (True)
+auction=False #simular Auction Algorithm 
+
 autom=1 #autom sim(1)/ver todo(0)
 changeDiv=0 #cambiar div durante sim(1)/ mantener div(0)
 
@@ -58,8 +63,9 @@ for divIniciales in theRange:
     ##                      Repeticiones para obtener efecto de número de divisiones
     ######################################################################################################
     for divIniciales2 in range(3,4):
-        w_Sim=np.zeros((int(2.1*qPerUAV),simPorDensidad)) #valores medios y desviación estándar en consumo por iteración
-        w_SimTotal=np.zeros((int(2.1*qPerUAV),simPorDensidad)) #valores de simulación total de la flota
+        w_SimMin=np.zeros((int(2.1*qPerUAV),simPorDensidad)) #valores minimos en consumo por iteración
+        w_SimKpi=np.zeros((int(2.1*qPerUAV),simPorDensidad)) #valores medios y desviación estándar en consumo por iteración
+        w_SimKpiTotal=np.zeros((int(2.1*qPerUAV),simPorDensidad)) #valores de simulación total de la flota
         q_Sim=np.zeros((int(2.1*qPerUAV),simPorDensidad))
 
         ######################################################################################################
@@ -78,8 +84,9 @@ for divIniciales in theRange:
 
             w=np.ones(nP)*capJoules #Registro de consumo por UAV (Energía restante)
             winit=np.array(w)
-            wIter=np.ones(int(2.1*qPerUAV))
-            wIterTotal=np.ones(int(2.1*qPerUAV))
+            wIterMin=np.ones(int(2.1*qPerUAV)) #registro de energía mínima en la flota
+            wIterKpi=np.ones(int(2.1*qPerUAV)) #registro de kpi por iteración
+            wIterKpiTotal=np.ones(int(2.1*qPerUAV)) #registro de kpi total por iteración
             allQMetIter=np.ones(int(2.1*qPerUAV))
 
             p= np.random.rand(nP,2)*radOper/1000   #inicializacion de matriz de UAVs
@@ -173,7 +180,7 @@ for divIniciales in theRange:
 
                             Amatrix=1000*distancepq*PtOptimum/vOptimum +1000*distanceqr*PtOptimum/vOptimum #matriz de pesos
                             wNode=w[indexP]
-                            asignE=Amatrix<wNode #inicialización de la matriz con arcos que pueden ser recorridos
+                            asignE=Amatrix<wNode +wmin#inicialización de la matriz con arcos que pueden ser recorridos
                             #asignE=asignE*(np.zeros((Amatrix.shape))+wMin<wNode)
 
                             #Matriz de distancias P_i a R
@@ -307,7 +314,7 @@ for divIniciales in theRange:
                         Amatrix=1000*distanceuq*PtOptimum/vOptimum +1000*distanceqRperQ*PtOptimum/vOptimum #matriz de pesos
 
                         wU=w[indexU]
-                        asignE=Amatrix<wU #inicialización de la matriz con arcos que pueden ser recorridos
+                        asignE=Amatrix<wU+wmin #inicialización de la matriz con arcos que pueden ser recorridos
                         asignE=np.multiply(asignE,nodeQnodeU)
                         #asignE=asignE*(np.zeros((Amatrix.shape))+wMin<wU)
                         asignUtoR=np.dot(np.ones((1,asignE.shape[0])),asignE)==0
@@ -454,7 +461,8 @@ for divIniciales in theRange:
                         break
 
                 if not qDone.shape[0]==0:
-                    wIter[iter]=(np.sum(wPrev)-np.sum(w))/qDone.shape[0] #Registro de consumo promedio por UAV para iteración actual
+                    wIterMin[iter]=np.min(w) #Registro de nivel energético mínimo en la flota
+                    wIterKpi[iter]=(np.sum(wPrev)-np.sum(w))/qDone.shape[0] #Registro de consumo promedio por UAV para iteración actual
                     if allQMet.shape[0]==0:
                         allQMet=np.array(q[qDone])
                     else:
@@ -464,7 +472,7 @@ for divIniciales in theRange:
                     RperQ=np.delete(RperQ,qDone,0) #eliminación de R asignados respectivos
                     print("Q actualizado")
                 
-                wIterTotal[iter]=(np.sum(winit)-np.sum(w))/allQMet.shape[0] #Registro de consumo total por UAV para iteración actual
+                wIterKpiTotal[iter]=(np.sum(winit)-np.sum(w))/allQMet.shape[0] #Registro de consumo total por UAV para iteración actual
                 allQMetIter[iter]=allQMet.shape[0] #Registro acumulativo de objetivos alcanzados
 
                 if np.sum(pReturned)==p.shape[0]:
@@ -480,16 +488,19 @@ for divIniciales in theRange:
                 if pureGRID and q.shape[0]==0:
                     break
 
-            w_Sim[:,simActual]=wIter/3600 #Conversión de Joules a Wh
-            w_SimTotal[:,simActual]=wIterTotal/3600 #Conversión a Wh
+            w_SimMin[:,simActual]=wIterMin/3600 #Conversión de Joules a Wh
+            w_SimKpi[:,simActual]=wIterKpi/3600 #Conversión de Joules a Wh
+            w_SimKpiTotal[:,simActual]=wIterKpiTotal/3600 #Conversión a Wh
             q_Sim[:,simActual]=allQMetIter
-        w_Div[:,divIniciales-1]=np.mean(w_Sim,axis=1)
-        print(w_SimTotal.shape)
-        w_DivTotal[:,divIniciales-1]=np.mean(w_SimTotal,axis=1)
+        w_DivMin[:,divIniciales-1]=np.mean(w_SimMin,axis=1)
+        w_DivKpi[:,divIniciales-1]=np.mean(w_SimKpi,axis=1)
+        print(w_SimKpiTotal.shape)
+        w_DivKpiTotal[:,divIniciales-1]=np.mean(w_SimKpiTotal,axis=1)
         print(q_Sim.shape)
         q_Div[:,divIniciales-1]=np.mean(q_Sim,axis=1)
-        w_DivStandar[:,divIniciales-1]=np.std(w_Sim,axis=1)
-        w_DivTotalStandar[:,divIniciales-1]=np.std(w_SimTotal,axis=1)
+        w_DivStandar[:,divIniciales-1]=np.std(w_SimKpi,axis=1)
+        w_DivKpiStandar[:,divIniciales-1]=np.std(w_SimKpi,axis=1)
+        w_DivKpiTotalStandar[:,divIniciales-1]=np.std(w_SimKpiTotal,axis=1)
         q_DivStandar[:,divIniciales-1]=np.std(q_Sim,axis=1)
 
 #print("initial energy",winit)
@@ -497,10 +508,11 @@ for divIniciales in theRange:
 #print("returned:",pReturned, "Bool statement:",np.sum(pReturned)==p.shape[0], "returning:",pReturning)
 #print("qShape:", q.shape[0])
 dataForJson={} #Data a ser guardada en formato json
-dataForJson["dataP"]=w_Div.tolist()
-dataForJson["dataPTotal"]=w_DivTotal.tolist()
-dataForJson["desvP"]=w_DivStandar.tolist()
-dataForJson["desvPTotal"]=w_DivTotalStandar.tolist()
+dataForJson["kpi_compl"]=w_DivKpi.tolist()
+dataForJson["kpi_total"]=w_DivKpiTotal.tolist()
+dataForJson["w_min"]=w_DivMin.tolist()
+dataForJson["kpi_compl_desv"]=w_DivKpiStandar.tolist()
+dataForJson["kpi_total_desv"]=w_DivKpiTotalStandar.tolist()
 dataForJson["qData"]=q_Div.tolist()
 dataForJson["qDesv"]=q_DivStandar.tolist()
 dataForJson["info"]="Resultado promedio con desviación estándar para simulaciones de múltiples particiones de AO."

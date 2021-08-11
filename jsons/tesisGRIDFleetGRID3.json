@@ -445,5 +445,5 @@
     ],
     "info": "Simulación grid target assignment aleatorio sin retorno \n • Resultados promedio y desviación estándar para consumo acumulado y consumo por iteraciones.\n • Se varia el tamaño de la flota en cuatro valores y se realizan 250 simulaciones.",
     "nQ": "90",
-    "qPerUAV": "6"
+    "qPerUAV": "6",
 }
